@@ -5,6 +5,7 @@ import com.onlineshop.common.BizException;
 import com.onlineshop.entity.Product;
 import com.onlineshop.enums.ProductStatus;
 import com.onlineshop.mapper.ProductMapper;
+import com.onlineshop.statemachine.ProductStateMachine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 public class ProductService {
 
     private final ProductMapper productMapper;
+    private final ProductStateMachine productStateMachine;
 
     /**
      * 单件在售约束（高佳豪负责的状态机部分：在售/冻结商品存在时拒绝发布新商品）
@@ -61,5 +63,49 @@ public class ProductService {
     public Product getOnSaleProduct() {
         return productMapper.selectOne(
                 new LambdaQueryWrapper<Product>().eq(Product::getStatus, ProductStatus.ON_SALE));
+    }
+
+    // ===== 以下状态流转方法由高佳豪（状态机负责人）提供，迭代 4 接入 Controller =====
+
+    private Product getByIdOrThrow(Long id) {
+        Product product = productMapper.selectById(id);
+        if (product == null) {
+            throw new BizException("商品不存在");
+        }
+        return product;
+    }
+
+    /**
+     * 冻结商品（队首意向进入线下交易）：在售 → 已冻结
+     */
+    @Transactional
+    public Product freezeProduct(Long id) {
+        Product product = getByIdOrThrow(id);
+        productStateMachine.freeze(product);
+        productMapper.updateById(product);
+        return product;
+    }
+
+    /**
+     * 解冻回退（交易失败 / 手动解冻）：已冻结 → 在售
+     */
+    @Transactional
+    public Product unfreezeProduct(Long id) {
+        Product product = getByIdOrThrow(id);
+        productStateMachine.unfreeze(product);
+        productMapper.updateById(product);
+        return product;
+    }
+
+    /**
+     * 下架商品（交易成功）：已冻结 → 已下架，记录成交时间
+     */
+    @Transactional
+    public Product delistProduct(Long id) {
+        Product product = getByIdOrThrow(id);
+        productStateMachine.delist(product);
+        product.setFinishTime(LocalDateTime.now());
+        productMapper.updateById(product);
+        return product;
     }
 }
