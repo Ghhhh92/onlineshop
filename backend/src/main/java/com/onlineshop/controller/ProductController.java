@@ -1,5 +1,6 @@
 package com.onlineshop.controller;
 
+import com.onlineshop.auth.RequireLogin;
 import com.onlineshop.common.Result;
 import com.onlineshop.dto.PublishProductRequest;
 import com.onlineshop.entity.Product;
@@ -22,8 +23,9 @@ public class ProductController {
     private final ProductService productService;
 
     /**
-     * 发布商品（卖家后台）
+     * 发布商品（卖家后台，需要登录）
      */
+    @RequireLogin
     @PostMapping("/publish")
     public Result<Product> publish(@Valid @RequestBody PublishProductRequest req) {
         Product product = productService.publish(

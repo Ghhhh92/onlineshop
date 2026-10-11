@@ -1,5 +1,13 @@
 server:
   port: 8000
+  servlet:
+    session:
+      # 卖家 30 分钟无操作后需要重新登录
+      timeout: 30m
+      cookie:
+        # 页面脚本读不到登录 Cookie；其他网站发起的跨站请求不带这个 Cookie
+        http-only: true
+        same-site: lax
 
 spring:
   application:
