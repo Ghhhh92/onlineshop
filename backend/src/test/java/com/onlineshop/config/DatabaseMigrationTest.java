@@ -53,7 +53,7 @@ class DatabaseMigrationTest {
     @DisplayName("启动时执行完全部迁移脚本")
     void allMigrationsApplied() {
         assertThat(Arrays.stream(flyway.info().applied()).map(MigrationInfo::getVersion).map(Object::toString))
-                .contains("1", "2");
+                .contains("1", "2", "3");
         assertThat(flyway.info().pending()).isEmpty();
     }
 

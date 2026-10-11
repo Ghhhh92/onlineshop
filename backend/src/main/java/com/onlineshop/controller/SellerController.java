@@ -3,6 +3,7 @@ package com.onlineshop.controller;
 import com.onlineshop.auth.RequireLogin;
 import com.onlineshop.auth.SellerSession;
 import com.onlineshop.common.Result;
+import com.onlineshop.dto.ChangePasswordRequest;
 import com.onlineshop.dto.LoginRequest;
 import com.onlineshop.dto.SellerInfo;
 import com.onlineshop.entity.Seller;
@@ -13,12 +14,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 卖家接口：登录、当前卖家、退出
+ * 卖家接口：登录、当前卖家、修改密码、退出
  *
  * @author 李帆
  * @date 2026-10-11
@@ -39,8 +41,20 @@ public class SellerController {
         HttpSession session = httpRequest.getSession();
         // 登录后换一个新的 Session ID，防止登录前被别人塞进来的 Session ID 在登录后继续有效（会话固定攻击）
         httpRequest.changeSessionId();
-        session.setAttribute(SellerSession.SELLER_ID, seller.getId());
+        SellerSession.login(session, seller);
         return Result.success(SellerInfo.from(seller));
+    }
+
+    /**
+     * 修改密码（US-12）。成功后当前登录失效，需要用新密码重新登录。
+     */
+    @RequireLogin
+    @PutMapping("/password")
+    public Result<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request, HttpSession session) {
+        sellerService.changePassword(SellerSession.currentSellerId(session),
+                request.getOldPassword(), request.getNewPassword());
+        session.invalidate();
+        return Result.success();
     }
 
     /**

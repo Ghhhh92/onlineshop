@@ -22,6 +22,9 @@ public class Seller {
     /** 用户名，唯一 */
     private String username;
 
-    /** 密码，不能返回给前端 */
+    /** 密码（BCrypt 加密后的），不能返回给前端 */
     private String password;
+
+    /** 密码版本号，每次修改密码加 1；登录时记进会话，版本对不上的会话视为已失效 */
+    private Integer passwordVersion;
 }

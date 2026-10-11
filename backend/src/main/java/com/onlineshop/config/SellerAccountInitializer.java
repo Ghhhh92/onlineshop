@@ -48,6 +48,7 @@ public class SellerAccountInitializer implements ApplicationRunner {
         Seller seller = new Seller();
         seller.setUsername(defaultSeller.username());
         seller.setPassword(passwordEncoder.encode(defaultSeller.password()));
+        seller.setPasswordVersion(0);
         sellerMapper.insert(seller);
         log.info("卖家表为空，已创建初始卖家账号：{}", seller.getUsername());
     }
