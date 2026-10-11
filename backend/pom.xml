@@ -44,6 +44,16 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- 数据库表结构版本管理：启动时自动执行 db/migration 下的脚本 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

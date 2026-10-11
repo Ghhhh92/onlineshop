@@ -1,26 +1,45 @@
 server:
   port: 8000
-  servlet:
-    context-path: /
 
 spring:
   application:
     name: onlineshop-backend
   datasource:
+    # 数据库连接通过环境变量 DB_URL / DB_USERNAME / DB_PASSWORD 配置，不设置时使用下面的默认值。
+    # createDatabaseIfNotExist=true：库不存在时自动创建。
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/onlineshop?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
-    username: root
-    password: root
+    url: ${DB_URL:jdbc:mysql://localhost:3306/onlineshop?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+  flyway:
+    # 启动时按版本执行 db/migration 下的建表、改表脚本
+    locations: classpath:db/migration
+    # 库里已经有表、但还没有 Flyway 记录时，以版本 0 为基线继续执行全部脚本；
+    # V1 用 IF NOT EXISTS，已有的表和数据都会保留
+    baseline-on-migrate: true
+    baseline-version: 0
 
 mybatis-plus:
-  mapper-locations: classpath:mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
+    banner: false
     db-config:
       id-type: auto
 
+shop:
+  cors:
+    # 允许跨域访问后端的前端地址；开发时前端走 Vite 代理，不经过跨域
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+  default-seller:
+    # 卖家表为空时自动创建的初始账号
+    username: admin
+    password: "123456"
+
 logging:
   level:
-    com.onlineshop: debug
+    com.onlineshop: info
+    # 打印执行的 SQL
+    com.onlineshop.mapper: debug

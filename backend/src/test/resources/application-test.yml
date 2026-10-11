@@ -1,0 +1,12 @@
+# 测试环境：H2 内存数据库（MySQL 兼容模式），不需要安装 MySQL。
+# 和正式环境执行同一套 Flyway 脚本。
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:onlineshop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+
+logging:
+  level:
+    com.onlineshop.mapper: info

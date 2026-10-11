@@ -1,19 +1,12 @@
--- 在线购物系统数据库初始化脚本
--- 创建数据库
-CREATE DATABASE IF NOT EXISTS onlineshop DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE onlineshop;
-
--- 卖家表（单卖家）
+-- 测试数据：模拟一个已经建好表、有数据，但还没有 Flyway 记录的库。
 CREATE TABLE IF NOT EXISTS seller (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
     password VARCHAR(100) NOT NULL COMMENT '密码'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='卖家';
 
--- 初始卖家账号：admin / 123456
 INSERT INTO seller (username, password) VALUES ('admin', '123456');
 
--- 商品表
 CREATE TABLE IF NOT EXISTS product (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(200) NOT NULL COMMENT '商品名称',
@@ -25,7 +18,6 @@ CREATE TABLE IF NOT EXISTS product (
     finish_time DATETIME COMMENT '成交时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品';
 
--- 购买意向表
 CREATE TABLE IF NOT EXISTS purchase_intent (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     product_id BIGINT NOT NULL COMMENT '商品ID',
@@ -36,3 +28,5 @@ CREATE TABLE IF NOT EXISTS purchase_intent (
     status VARCHAR(20) NOT NULL COMMENT '状态：QUEUING排队中 / TRADING交易中 / SUCCESS成功 / FAILED失败 / CANCELED已撤销',
     create_time DATETIME NOT NULL COMMENT '提交时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购买意向';
+
+INSERT INTO product (name, price, status, create_time) VALUES ('已有商品', 88.00, 'ON_SALE', '2026-10-08 12:00:00');
