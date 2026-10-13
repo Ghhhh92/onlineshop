@@ -1,0 +1,20 @@
+# 测试环境配置：H2 内存库，隔离真实数据
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:onlineshop;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-test.sql
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 测试关掉 SQL 日志，避免刷屏
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+  global-config:
+    db-config:
+      id-type: auto
