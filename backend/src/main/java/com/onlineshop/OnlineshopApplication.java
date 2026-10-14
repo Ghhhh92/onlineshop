@@ -3,6 +3,7 @@ package com.onlineshop;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * 在线购物系统后端启动类
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @date 2026-10-08
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 @MapperScan("com.onlineshop.mapper")
 public class OnlineshopApplication {
 
