@@ -15,6 +15,7 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.ActiveProfiles;
 
 import javax.sql.DataSource;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -88,7 +89,10 @@ class DatabaseMigrationTest {
     @DisplayName("已有表和数据、但没有 Flyway 记录的库：原有数据保留，并补上索引")
     void existingDatabaseKeepsData() throws SQLException {
         DataSource existing = h2("existing_db");
-        new ResourceDatabasePopulator(new ClassPathResource("db/existing-database.sql")).execute(existing);
+        ResourceDatabasePopulator populator = new ResourceDatabasePopulator(new ClassPathResource("db/existing-database.sql"));
+        // 脚本里有中文，必须按 UTF-8 读；不指定时用系统默认编码，中文 Windows 上的 JDK 17 默认是 GBK
+        populator.setSqlScriptEncoding(StandardCharsets.UTF_8.name());
+        populator.execute(existing);
 
         migrateWithAppSettings(existing);
 
@@ -117,6 +121,7 @@ class DatabaseMigrationTest {
         Flyway.configure()
                 .dataSource(target)
                 .locations(flywayProperties.getLocations().toArray(String[]::new))
+                .encoding(flywayProperties.getEncoding())
                 .baselineOnMigrate(flywayProperties.isBaselineOnMigrate())
                 .baselineVersion(flywayProperties.getBaselineVersion())
                 .load()

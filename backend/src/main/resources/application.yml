@@ -22,6 +22,8 @@ spring:
   flyway:
     # 启动时按版本执行 db/migration 下的建表、改表脚本
     locations: classpath:db/migration
+    # 脚本里有中文注释和 COMMENT，按 UTF-8 读取，不受系统默认编码影响
+    encoding: UTF-8
     # 库里已经有表、但还没有 Flyway 记录时，以版本 0 为基线继续执行全部脚本；
     # V1 用 IF NOT EXISTS，已有的表和数据都会保留
     baseline-on-migrate: true
