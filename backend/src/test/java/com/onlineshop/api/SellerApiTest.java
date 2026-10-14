@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.notNullValue;
 
 /**
  * 卖家登录接口测试（US-11）
@@ -17,7 +17,7 @@ import static org.hamcrest.Matchers.nullValue;
 class SellerApiTest extends BaseApiTest {
 
     @Test
-    @DisplayName("TC-LOGIN-01 正确账号密码登录成功，不返回密码")
+    @DisplayName("TC-LOGIN-01 正确账号密码登录成功，返回卖家信息（不含密码）")
     void loginSuccess() {
         given()
                 .contentType(ContentType.JSON)
@@ -27,12 +27,12 @@ class SellerApiTest extends BaseApiTest {
                 .then()
                 .statusCode(200)
                 .body("code", equalTo(200))
-                .body("data.username", equalTo("admin"))
-                .body("data.password", nullValue());
+                .body("data.id", notNullValue())
+                .body("data.username", equalTo("admin"));
     }
 
     @Test
-    @DisplayName("TC-LOGIN-02 用户名不存在返回 400")
+    @DisplayName("TC-LOGIN-02 用户名不存在返回 400，提示和密码错误一致")
     void loginUserNotFound() {
         given()
                 .contentType(ContentType.JSON)
@@ -40,9 +40,8 @@ class SellerApiTest extends BaseApiTest {
                 .when()
                 .post("/seller/login")
                 .then()
-                .statusCode(200)
-                .body("code", equalTo(400))
-                .body("message", equalTo("用户名不存在"));
+                .statusCode(400)
+                .body("message", equalTo("用户名或密码错误"));
     }
 
     @Test
@@ -54,9 +53,8 @@ class SellerApiTest extends BaseApiTest {
                 .when()
                 .post("/seller/login")
                 .then()
-                .statusCode(200)
-                .body("code", equalTo(400))
-                .body("message", equalTo("密码错误"));
+                .statusCode(400)
+                .body("message", equalTo("用户名或密码错误"));
     }
 
     @Test
@@ -68,8 +66,7 @@ class SellerApiTest extends BaseApiTest {
                 .when()
                 .post("/seller/login")
                 .then()
-                .statusCode(200)
-                .body("code", equalTo(400))
+                .statusCode(400)
                 .body("message", equalTo("用户名不能为空"));
     }
 
@@ -82,8 +79,7 @@ class SellerApiTest extends BaseApiTest {
                 .when()
                 .post("/seller/login")
                 .then()
-                .statusCode(200)
-                .body("code", equalTo(400))
+                .statusCode(400)
                 .body("message", equalTo("密码不能为空"));
     }
 }

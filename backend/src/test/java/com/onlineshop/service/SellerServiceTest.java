@@ -1,6 +1,5 @@
 package com.onlineshop.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.onlineshop.common.BizException;
 import com.onlineshop.entity.Seller;
 import com.onlineshop.mapper.SellerMapper;
@@ -11,10 +10,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
@@ -29,6 +28,9 @@ class SellerServiceTest {
     @Mock
     private SellerMapper sellerMapper;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private SellerService sellerService;
 
@@ -39,13 +41,15 @@ class SellerServiceTest {
         admin = new Seller();
         admin.setId(1L);
         admin.setUsername("admin");
-        admin.setPassword("123456");
+        // 库里存的是 BCrypt 加密后的密码，这里只用一个占位串，校验交给 mock 的 passwordEncoder
+        admin.setPassword("$2a$10$hashedplaceholder");
     }
 
     @Test
     @DisplayName("登录成功返回卖家")
     void loginSuccess() {
-        when(sellerMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(admin);
+        when(sellerMapper.selectByUsername("admin")).thenReturn(admin);
+        when(passwordEncoder.matches("123456", admin.getPassword())).thenReturn(true);
 
         Seller result = sellerService.login("admin", "123456");
 
@@ -53,22 +57,23 @@ class SellerServiceTest {
     }
 
     @Test
-    @DisplayName("用户名不存在抛业务异常")
+    @DisplayName("用户名不存在抛业务异常，提示和密码错误一致")
     void loginUserNotFound() {
-        when(sellerMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        when(sellerMapper.selectByUsername("nobody")).thenReturn(null);
 
         assertThatThrownBy(() -> sellerService.login("nobody", "123456"))
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("用户名不存在");
+                .hasMessage("用户名或密码错误");
     }
 
     @Test
     @DisplayName("密码错误抛业务异常")
     void loginWrongPassword() {
-        when(sellerMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(admin);
+        when(sellerMapper.selectByUsername("admin")).thenReturn(admin);
+        when(passwordEncoder.matches("wrong", admin.getPassword())).thenReturn(false);
 
         assertThatThrownBy(() -> sellerService.login("admin", "wrong"))
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("密码错误");
+                .hasMessage("用户名或密码错误");
     }
 }

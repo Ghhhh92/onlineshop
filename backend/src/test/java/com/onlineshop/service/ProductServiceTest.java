@@ -2,6 +2,7 @@ package com.onlineshop.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.onlineshop.common.BizException;
+import com.onlineshop.dto.PublishProductRequest;
 import com.onlineshop.entity.Product;
 import com.onlineshop.enums.ProductStatus;
 import com.onlineshop.mapper.ProductMapper;
@@ -40,12 +41,22 @@ class ProductServiceTest {
     @InjectMocks
     private ProductService productService;
 
+    /** 构造发布请求对象，与后端 publish(PublishProductRequest) 的签名对齐 */
+    private PublishProductRequest publishRequest(String name, String price) {
+        PublishProductRequest request = new PublishProductRequest();
+        request.setName(name);
+        request.setDescription("描述");
+        request.setImage("img");
+        request.setPrice(new BigDecimal(price));
+        return request;
+    }
+
     @Test
     @DisplayName("无在售商品时发布成功，状态为在售")
     void publishSuccess() {
         when(productMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
 
-        Product product = productService.publish("iPhone", "描述", "img", new BigDecimal("6999"));
+        Product product = productService.publish(publishRequest("iPhone", "6999"));
 
         assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
         verify(productMapper).insert(any(Product.class));
@@ -56,7 +67,7 @@ class ProductServiceTest {
     void publishRejectedWhenOnSaleExists() {
         when(productMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
 
-        assertThatThrownBy(() -> productService.publish("iPhone", "描述", "img", new BigDecimal("6999")))
+        assertThatThrownBy(() -> productService.publish(publishRequest("iPhone", "6999")))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("无法发布新商品");
         verify(productMapper, never()).insert(any(Product.class));
