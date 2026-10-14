@@ -44,19 +44,46 @@ onlineshop/
 
 ## 启动后端
 
-```bash
+MySQL 服务启动后，设置数据库密码并启动，不需要手动建库建表：
+
+```powershell
 cd backend
 
-# 1. 创建数据库并执行初始化脚本
-mysql -u root -p < src/main/resources/schema.sql
+# PowerShell 设置数据库密码（只对当前窗口有效）
+$env:DB_PASSWORD = "你的MySQL密码"
 
-# 2. 修改 application.yml 中的数据库账号密码
-
-# 3. 启动（端口 8000）
+# 启动（端口 8000）
 mvn spring-boot:run
 ```
 
-初始卖家账号：`admin / 123456`
+首次启动会自动创建 `onlineshop` 库和表，并在卖家表为空时创建初始卖家账号 `admin / 123456`。之后重启数据都会保留。
+
+数据库连接通过环境变量配置，不设置时用默认值：
+
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `DB_URL` | `jdbc:mysql://localhost:3306/onlineshop?createDatabaseIfNotExist=true&...` | 数据库地址，库不存在时自动创建 |
+| `DB_USERNAME` | `root` | 数据库用户名 |
+| `DB_PASSWORD` | `root` | 数据库密码 |
+
+在 IntelliJ IDEA 里运行时，在运行配置的环境变量里填 `DB_PASSWORD=你的密码`。
+
+## 运行后端测试
+
+```bash
+cd backend
+mvn test
+```
+
+测试使用 H2 内存数据库（MySQL 兼容模式），不需要安装 MySQL。
+
+## 修改表结构
+
+表结构由 Flyway 管理，脚本在 `backend/src/main/resources/db/migration/`，启动时按版本号自动执行，每个脚本只执行一次。
+
+- 改表时新增一个脚本，文件名按 `V{下一个版本号}__说明.sql`，例如 `V3__add_intent_requeue_column.sql`。
+- 已经执行过的脚本不要再修改，否则启动时会校验失败。
+- 已经建好表、但没有 Flyway 记录的库也可以直接启动：已有的表和数据保留，缺的表和索引会自动补上。
 
 ## 启动前端
 

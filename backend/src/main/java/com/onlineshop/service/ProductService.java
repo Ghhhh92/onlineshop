@@ -2,6 +2,7 @@ package com.onlineshop.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.onlineshop.common.BizException;
+import com.onlineshop.dto.PublishProductRequest;
 import com.onlineshop.entity.Product;
 import com.onlineshop.enums.ProductStatus;
 import com.onlineshop.mapper.ProductMapper;
@@ -10,8 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 /**
  * 商品服务
@@ -39,22 +41,30 @@ public class ProductService {
     }
 
     /**
-     * 发布商品
+     * 发布商品（US-13）：通过单件在售检查后，商品以「在售」状态保存。
+     * <p>
+     * 名称去掉首尾空格，没填的描述和图片存为 null；价格统一保留两位小数；
+     * 发布时间精确到秒，和数据库 DATETIME 存下来的一致，发布时返回的和之后查到的相同。
      */
     @Transactional
-    public Product publish(String name, String description, String image, BigDecimal price) {
+    public Product publish(PublishProductRequest request) {
         // 单件在售约束
         checkSingleOnSale();
 
         Product product = new Product();
-        product.setName(name);
-        product.setDescription(description);
-        product.setImage(image);
-        product.setPrice(price);
+        product.setName(request.getName().trim());
+        product.setDescription(blankToNull(request.getDescription()));
+        product.setImage(blankToNull(request.getImage()));
+        // 入参校验已保证最多两位小数，这里只补齐成两位，不会发生舍入
+        product.setPrice(request.getPrice().setScale(2, RoundingMode.UNNECESSARY));
         product.setStatus(ProductStatus.ON_SALE);
-        product.setCreateTime(LocalDateTime.now());
+        product.setCreateTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
         productMapper.insert(product);
         return product;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /**

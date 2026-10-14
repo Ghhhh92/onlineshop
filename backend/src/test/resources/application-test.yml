@@ -1,20 +1,23 @@
-# 测试环境配置：H2 内存库，隔离真实数据
+# 测试环境：H2 内存数据库（MySQL 兼容模式），不需要安装 MySQL。
+# 表结构由 Flyway 执行 db/migration 下的脚本自动创建，与正式环境保持一致。
 spring:
   datasource:
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:onlineshop;MODE=MySQL;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:onlineshop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
     username: sa
     password: ""
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema-test.sql
+  flyway:
+    # 开启 Flyway：数据库建表统一由迁移脚本自动执行
+    enabled: true
 
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    # 测试关掉 SQL 日志，避免刷屏
-    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
   global-config:
+    banner: false
     db-config:
       id-type: auto
+
+logging:
+  level:
+    com.onlineshop.mapper: info
