@@ -1,11 +1,22 @@
 # 测试环境：H2 内存数据库（MySQL 兼容模式），不需要安装 MySQL。
-# 和正式环境执行同一套 Flyway 脚本。
+# 表结构由 Flyway 执行 db/migration 下的脚本自动创建，与正式环境保持一致。
 spring:
   datasource:
     driver-class-name: org.h2.Driver
     url: jdbc:h2:mem:onlineshop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
     username: sa
     password: ""
+  flyway:
+    # 开启 Flyway：数据库建表统一由迁移脚本自动执行
+    enabled: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
 
 logging:
   level:
