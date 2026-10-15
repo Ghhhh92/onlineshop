@@ -36,9 +36,14 @@ const router = createRouter({
 })
 
 // 登录守卫：未登录访问卖家后台跳转到登录页
-router.beforeEach((to) => {
-  if (to.meta.requiresAuth && !useSellerStore().loggedIn) {
-    return '/seller/login'
+router.beforeEach(async (to) => {
+  const store = useSellerStore()
+  if (to.meta.requiresAuth || to.name === 'SellerLogin') {
+    try { await store.restore() } catch {
+      return to.name === 'SellerLogin' ? true : { path: '/seller/login', query: { reason: 'connection' } }
+    }
+    if (to.meta.requiresAuth && !store.loggedIn) return '/seller/login'
+    if (to.name === 'SellerLogin' && store.loggedIn) return '/seller/admin'
   }
 })
 

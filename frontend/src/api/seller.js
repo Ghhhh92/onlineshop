@@ -14,3 +14,7 @@ export function getMe() {
 export function logout() {
   return http.post('/seller/logout')
 }
+
+export function changePassword(data) {
+  return http.put('/seller/password', data)
+}
