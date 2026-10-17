@@ -33,8 +33,8 @@ const rules = {
 
 async function submit() {
   await formRef.value.validate()
-  // 迭代 3 对接后端接口，此处先展示校验通过
-  ElMessage.success('提交成功（迭代 3 对接后端）')
+  // TODO: 待后端「提交意向」接口（李帆）就绪后：调用接口拿到口令码，再跳转 /done/:code
+  ElMessage.success('提交成功（待后端提交意向接口对接）')
 }
 </script>
 
