@@ -1,0 +1,47 @@
+# 在线购物系统 · 一键部署（MySQL 8 + 后端 + 前端）
+# 用法：docker compose up -d --build   （首次会自动建库建表并创建初始卖家账号 admin/123456）
+# 访问：前端 http://localhost:8080 ；后端接口 http://localhost:8000/api
+name: onlineshop
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: onlineshop
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    image: onlineshop-backend:1.0.0
+    environment:
+      DB_URL: "jdbc:mysql://db:3306/onlineshop?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false"
+      DB_USERNAME: root
+      DB_PASSWORD: root
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    image: onlineshop-frontend:1.0.0
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  db-data:
