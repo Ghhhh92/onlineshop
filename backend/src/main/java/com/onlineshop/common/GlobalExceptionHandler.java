@@ -4,10 +4,12 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -31,6 +33,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
     static final String INTERNAL_ERROR_MESSAGE = "服务器内部错误，请稍后再试";
+
+    static final String CLIENT_ERROR_MESSAGE = "请求不正确，请检查后重试";
 
     /** 业务异常：HTTP 状态码取异常里的 code，不是合法的错误状态码时按 400 处理 */
     @ExceptionHandler(BizException.class)
@@ -90,9 +94,16 @@ public class GlobalExceptionHandler {
         return fail(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "不支持的请求内容类型");
     }
 
-    /** 兜底：未预料的异常 */
+    /**
+     * 兜底。Spring MVC 自己抛出的异常（上传超限、缺少请求头、方法参数校验失败等）实现了 {@link ErrorResponse}，
+     * 自带合适的状态码，按它返回 4xx；其余未预料的异常才是 500。
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<Void>> handleUnexpected(Exception e) {
+        if (e instanceof ErrorResponse errorResponse && errorResponse.getStatusCode().is4xxClientError()) {
+            HttpStatusCode status = errorResponse.getStatusCode();
+            return ResponseEntity.status(status).body(Result.fail(status.value(), CLIENT_ERROR_MESSAGE));
+        }
         log.error("未处理的异常", e);
         return fail(HttpStatus.INTERNAL_SERVER_ERROR, INTERNAL_ERROR_MESSAGE);
     }
