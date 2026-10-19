@@ -3,7 +3,8 @@
 spring:
   datasource:
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:onlineshop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    # LOCK_TIMEOUT：并发测试里多个事务排队等同一行的锁，H2 默认只等 1 秒，放宽到 10 秒
+    url: jdbc:h2:mem:onlineshop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000
     username: sa
     password: ""
   flyway:
