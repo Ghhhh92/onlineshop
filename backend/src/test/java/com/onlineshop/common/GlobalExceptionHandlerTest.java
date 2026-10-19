@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
@@ -102,6 +104,23 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.message", not(containsString("password"))));
     }
 
+    @Test
+    @DisplayName("Spring 自带状态码的 4xx 异常按原状态码返回，不当成 500")
+    void springClientErrorKeepsItsStatus() throws Exception {
+        mockMvc.perform(get("/probe/payload-too-large"))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value(413))
+                .andExpect(jsonPath("$.message").value(GlobalExceptionHandler.CLIENT_ERROR_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("Spring 自带状态码的 5xx 异常仍按服务器内部错误处理")
+    void springServerErrorStillHidden() throws Exception {
+        mockMvc.perform(get("/probe/unavailable"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value(GlobalExceptionHandler.INTERNAL_ERROR_MESSAGE));
+    }
+
     @RestController
     static class ProbeController {
 
@@ -126,6 +145,16 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/probe/crash")
         void crash() {
             throw new IllegalStateException("connect failed, password=secret");
+        }
+
+        @GetMapping("/probe/payload-too-large")
+        void payloadTooLarge() {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE);
+        }
+
+        @GetMapping("/probe/unavailable")
+        void unavailable() {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "db down");
         }
     }
 
