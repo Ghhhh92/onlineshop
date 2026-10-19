@@ -37,11 +37,12 @@ public class ProductController {
     }
 
     /**
-     * 查询当前在售商品（买家端首页），没有在售商品时 data 为 null
+     * 查询买家首页展示的商品（US-01、US-02）：在售或交易中的那一件，都没有时 data 为 null。
+     * 商品冻结时照常返回名称、描述、图片、价格，status 为 FROZEN，买家端据此显示「商品交易中」。
      */
     @GetMapping("/on-sale")
     public Result<ProductInfo> getOnSale() {
-        Product product = productService.getOnSaleProduct();
+        Product product = productService.getCurrentProduct();
         return Result.success(product == null ? null : ProductInfo.from(product));
     }
 }

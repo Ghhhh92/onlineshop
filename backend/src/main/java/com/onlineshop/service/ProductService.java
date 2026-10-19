@@ -68,11 +68,10 @@ public class ProductService {
     }
 
     /**
-     * 查询当前在售商品
+     * 买家首页展示的商品：在售或已冻结（交易中）的那一件，没有时返回 null
      */
-    public Product getOnSaleProduct() {
-        return productMapper.selectOne(
-                new LambdaQueryWrapper<Product>().eq(Product::getStatus, ProductStatus.ON_SALE));
+    public Product getCurrentProduct() {
+        return productMapper.selectCurrent();
     }
 
     // ===== 以下状态流转方法由高佳豪（状态机负责人）提供，迭代 4 接入 Controller =====
