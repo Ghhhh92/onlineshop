@@ -99,13 +99,48 @@ npm run dev
 
 访问 http://localhost:5173
 
+## Docker 一键部署（推荐）
+
+无需安装 MySQL，也无需本地构建：
+
+```bash
+# 有源码时：构建并启动（MySQL 8 + 后端 + 前端）
+docker compose up -d --build
+
+# 仅有离线镜像包时：先导入镜像，再启动（无需联网）
+docker load -i onlineshop-images.tar
+docker compose -f docker-compose.deploy.yml up -d
+```
+
+启动后：
+
+| 服务 | 地址 |
+| --- | --- |
+| 买家端首页 | http://localhost:8080 |
+| 卖家后台登录 | http://localhost:8080/seller/login（初始账号 `admin / 123456`） |
+| 后端接口 | http://localhost:8000/api |
+| MySQL | 宿主机 `13306` → 容器 `3306`（避开本机可能已占用的 3306） |
+
+更详细的镜像构建、镜像导出与常见问题见 Wiki [安装部署手册](https://github.com/Ghhhh92/onlineshop/wiki/安装部署手册)。
+
+## 运行后端测试
+
+```bash
+cd backend
+mvn clean test
+```
+
+共 103 个自动化用例（单元 + 接口，H2 内存库，无需 MySQL），成功标志为 `Tests run: 103, Failures: 0, Errors: 0` + `BUILD SUCCESS`。执行说明见 Wiki [构建过程手册](https://github.com/Ghhhh92/onlineshop/wiki/构建过程手册) 第 7 节。
+
 ## 迭代 2 已实现
 
 - 卖家登录接口 + 页面（李帆 / 范与恒）
 - 发布商品接口 + 页面，含单件在售约束（李帆 / 范与恒 / 高佳豪）
 - 商品状态机枚举与流转校验（高佳豪）
-- 买家端首页展示在售商品（高佳豪 / 李帆）
+- 买家端首页展示在售商品，商品交易中时照常展示（高佳豪 / 李帆）
 - 买家提交购买意向 + 口令码查询，卖家查看意向人 / 当前商品 / 历史商品（李帆 / 林炜博 / 范与恒；原规划迭代 3，为满足基线需求验收提前交付）
+- Docker 化：后端 / 前端镜像、离线镜像包与一键部署（高佳豪）
+- 自动化测试：103 个后端用例 + 真实端到端回归脚本（叶文锦）
 
 ## 迭代 2 待实现
 
