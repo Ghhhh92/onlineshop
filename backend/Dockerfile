@@ -6,6 +6,8 @@ FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /build
 COPY pom.xml ./
 COPY src ./src
+# 国内网络访问 Maven 中央仓库极慢，使用阿里云镜像加速（见 maven-settings-docker.xml）
+COPY maven-settings-docker.xml /root/.m2/settings.xml
 # 构建镜像时跳过测试（测试在 CI / 本地用 mvn test 单独执行，见《运行录屏》）
 RUN mvn -B clean package -DskipTests
 

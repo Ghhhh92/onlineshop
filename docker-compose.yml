@@ -15,7 +15,8 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     ports:
-      - "3306:3306"
+      # 映射到 13306，避免与宿主机已有的 MySQL（3306）冲突；容器间仍用 db:3306 访问
+      - "13306:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
       interval: 5s

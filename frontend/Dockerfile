@@ -2,10 +2,12 @@
 # 构建：docker build -t <你的命名空间>/onlineshop-frontend:1.0.0 ./frontend
 
 # ---- 阶段 1：构建，用 Node 生成 dist 静态资源 ----
-FROM node:20-alpine AS build
+# 注：node 22 满足 @vueuse/core 等依赖的 engines 要求（>=22）
+FROM node:22-alpine AS build
 WORKDIR /build
 COPY package.json package-lock.json ./
-RUN npm install
+# 国内网络访问 registry.npmjs.org 常出现 ECONNRESET，改用国内镜像源加速
+RUN npm install --registry=https://registry.npmmirror.com
 COPY . .
 RUN npm run build
 
