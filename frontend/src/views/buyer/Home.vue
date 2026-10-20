@@ -1,6 +1,14 @@
 <template>
   <div class="home-container">
     <el-card v-if="product">
+      <el-alert
+        v-if="isFrozen"
+        title="商品交易中，暂不可购买"
+        type="warning"
+        :closable="false"
+        show-icon
+        class="trade-tip"
+      />
       <div class="product-image">
         <img
           v-if="product.image && !imageError"
@@ -13,7 +21,9 @@
       <h2>{{ product.name }}</h2>
       <p class="price">价格：￥{{ product.price }}</p>
       <p v-if="product.description">描述：{{ product.description }}</p>
-      <el-button type="primary" size="large" @click="goBuy">我要购买</el-button>
+      <el-button type="primary" size="large" :disabled="isFrozen" @click="goBuy">
+        {{ isFrozen ? '商品交易中' : '我要购买' }}
+      </el-button>
     </el-card>
     <el-card v-else>
       <el-empty description="暂无在售商品" />
@@ -22,20 +32,27 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOnSaleProduct } from '@/api/product'
 
 const router = useRouter()
 const product = ref(null)
 const imageError = ref(false)
+const isFrozen = computed(() => product.value?.status === 'FROZEN')
 
 onMounted(async () => {
-  product.value = await getOnSaleProduct()
+  try {
+    product.value = await getOnSaleProduct()
+  } catch {
+    product.value = null
+  }
 })
 
 function goBuy() {
-  router.push('/buy')
+  if (!isFrozen.value) {
+    router.push('/buy')
+  }
 }
 </script>
 
@@ -44,6 +61,9 @@ function goBuy() {
   max-width: 800px;
   margin: 60px auto;
   padding: 0 20px;
+}
+.trade-tip {
+  margin-bottom: 16px;
 }
 .product-image {
   margin-bottom: 16px;
