@@ -10,7 +10,7 @@
           <el-input v-model="form.phone" placeholder="请填写 11 位手机号" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="submit">提交</el-button>
+          <el-button type="primary" :loading="loading" @click="submit">提交</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -19,9 +19,12 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { submitIntent } from '@/api/buyer'
 
+const router = useRouter()
 const formRef = ref(null)
+const loading = ref(false)
 const form = reactive({ name: '', phone: '' })
 const rules = {
   name: [{ required: true, message: '请填写姓名', trigger: 'blur' }],
@@ -32,9 +35,18 @@ const rules = {
 }
 
 async function submit() {
-  await formRef.value.validate()
-  // TODO: 待后端「提交意向」接口（李帆）就绪后：调用接口拿到口令码，再跳转 /done/:code
-  ElMessage.success('提交成功（待后端提交意向接口对接）')
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  loading.value = true
+  try {
+    const data = await submitIntent({ name: form.name.trim(), phone: form.phone.trim() })
+    router.push({ path: `/done/${data.code}`, query: { position: data.position, createTime: data.createTime } })
+  } catch {
+    // 错误提示由 http 拦截器统一处理
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
