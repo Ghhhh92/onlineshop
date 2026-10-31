@@ -19,7 +19,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 
 /**
- * 买家侧购买意向：提交意向（US-04、US-05、US-29、US-30），凭口令码查询位次和状态（US-06、US-07）。
+ * 买家侧购买意向：提交意向（US-04、US-05、US-29、US-30），凭口令码查询位次和状态（US-06、US-07），
+ * 凭口令码撤销意向（US-09）。
  *
  * @author 李帆
  * @date 2026-10-19
@@ -73,19 +74,49 @@ public class BuyerIntentService {
      * 交易结束（成功、失败）、已撤销或商品已下架时，口令码失效（US-10）。
      */
     public IntentQueryResult query(String rawCode) {
+        PurchaseIntent intent = findByCode(rawCode);
+        Product product = productOfValidIntent(intent);
+        return new IntentQueryResult(intent.getCode(), currentPosition(intent), intent.getStatus(),
+                intent.getStatus().getDesc(), intent.getName(), maskPhone(intent.getPhone()),
+                product.getName(), intent.getCreateTime());
+    }
+
+    /**
+     * 凭口令码撤销意向（US-09）。只有「排队中」的意向可以撤销，进入交易后不能撤销；
+     * 撤销后口令码失效（US-10），排在后面的人位次自动前移（位次按仍在队列中的意向实时计算）。
+     */
+    @Transactional
+    public void cancel(String rawCode) {
+        PurchaseIntent intent = findByCode(rawCode);
+        productOfValidIntent(intent);
+        if (!intent.getStatus().canTransitTo(IntentStatus.CANCELED)) {
+            throw new BizException("正在交易中，不能撤销");
+        }
+        if (!intentMapper.updateStatus(intent.getId(), intent.getStatus(), IntentStatus.CANCELED)) {
+            // 查到之后、改之前，意向刚被卖家拉进交易，或者已经被撤销
+            IntentStatus now = intentMapper.selectById(intent.getId()).getStatus();
+            throw new BizException(now == IntentStatus.TRADING ? "正在交易中，不能撤销" : "口令码已失效");
+        }
+    }
+
+    /** 按口令码查意向，不区分大小写，前后空格忽略；不存在时返回 404 */
+    private PurchaseIntent findByCode(String rawCode) {
         String code = rawCode == null ? "" : rawCode.trim().toUpperCase(Locale.ROOT);
         PurchaseIntent intent = intentMapper.selectByCode(code);
         if (intent == null) {
             throw new BizException(404, "口令码不存在");
         }
+        return intent;
+    }
+
+    /** 意向仍在队列中、商品没有下架时返回商品，否则口令码已失效（US-10） */
+    private Product productOfValidIntent(PurchaseIntent intent) {
         Product product = productMapper.selectById(intent.getProductId());
         if (!PurchaseIntentMapper.ACTIVE_STATUSES.contains(intent.getStatus())
                 || product == null || product.getStatus() == ProductStatus.DELISTED) {
             throw new BizException("口令码已失效");
         }
-        return new IntentQueryResult(intent.getCode(), currentPosition(intent), intent.getStatus(),
-                intent.getStatus().getDesc(), intent.getName(), maskPhone(intent.getPhone()),
-                product.getName(), intent.getCreateTime());
+        return product;
     }
 
     /** 当前位次 = 排在它前面、仍在队列中的意向数 + 1 */

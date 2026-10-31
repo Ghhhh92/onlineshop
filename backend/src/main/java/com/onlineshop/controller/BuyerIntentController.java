@@ -42,4 +42,13 @@ public class BuyerIntentController {
     public Result<IntentQueryResult> query(@PathVariable String code) {
         return Result.success(buyerIntentService.query(code));
     }
+
+    /**
+     * 凭口令码撤销意向，撤销后口令码失效
+     */
+    @PostMapping("/{code}/cancel")
+    public Result<Void> cancel(@PathVariable String code) {
+        buyerIntentService.cancel(code);
+        return Result.success();
+    }
 }

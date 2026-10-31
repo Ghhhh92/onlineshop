@@ -67,4 +67,15 @@ public interface PurchaseIntentMapper extends BaseMapper<PurchaseIntent> {
                 .orderByAsc(PurchaseIntent::getPosition)
                 .orderByAsc(PurchaseIntent::getId));
     }
+
+    /**
+     * 意向当前是 from 状态时才改成 to，返回是否改成功。
+     * 检查和修改在同一条 UPDATE 里完成：两个操作同时改同一条意向时，只有一个能成功。
+     */
+    default boolean updateStatus(Long id, IntentStatus from, IntentStatus to) {
+        return update(null, Wrappers.<PurchaseIntent>lambdaUpdate()
+                .set(PurchaseIntent::getStatus, to)
+                .eq(PurchaseIntent::getId, id)
+                .eq(PurchaseIntent::getStatus, from)) > 0;
+    }
 }
