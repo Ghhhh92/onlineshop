@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.hamcrest.Matchers.not;
@@ -114,6 +115,15 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("上传的文件超过大小上限返回 400，提示图片不能超过 5MB")
+    void uploadTooLargeReturns400() throws Exception {
+        mockMvc.perform(get("/probe/upload-too-large"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("图片不能超过 5MB"));
+    }
+
+    @Test
     @DisplayName("Spring 自带状态码的 5xx 异常仍按服务器内部错误处理")
     void springServerErrorStillHidden() throws Exception {
         mockMvc.perform(get("/probe/unavailable"))
@@ -155,6 +165,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/probe/unavailable")
         void unavailable() {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "db down");
+        }
+
+        @GetMapping("/probe/upload-too-large")
+        void uploadTooLarge() {
+            throw new MaxUploadSizeExceededException(5L * 1024 * 1024);
         }
     }
 

@@ -8,10 +8,18 @@ server:
         # 页面脚本读不到登录 Cookie；其他网站发起的跨站请求不带这个 Cookie
         http-only: true
         same-site: lax
+  tomcat:
+    # 上传超过大小上限时，Tomcat 要先读完请求体才能把错误提示返回给浏览器；默认只读 2MB，超过就直接断开连接
+    max-swallow-size: 20MB
 
 spring:
   application:
     name: onlineshop-backend
+  servlet:
+    multipart:
+      # 商品图片单张不超过 5MB（US-27），超过时返回 400「图片不能超过 5MB」
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     # 数据库连接通过环境变量 DB_URL / DB_USERNAME / DB_PASSWORD 配置，不设置时使用下面的默认值。
     # createDatabaseIfNotExist=true：库不存在时自动创建。
@@ -47,6 +55,9 @@ shop:
     # 卖家表为空时自动创建的初始账号
     username: admin
     password: "123456"
+  upload:
+    # 商品图片的保存目录，可用环境变量 UPLOAD_DIR 指定；Docker 部署时要挂载成数据卷，否则重建容器后图片丢失
+    dir: ${UPLOAD_DIR:uploads}
 
 logging:
   level:
