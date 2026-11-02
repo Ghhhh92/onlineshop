@@ -54,19 +54,22 @@ class DatabaseMigrationTest {
     @DisplayName("启动时执行完全部迁移脚本")
     void allMigrationsApplied() {
         assertThat(Arrays.stream(flyway.info().applied()).map(MigrationInfo::getVersion).map(Object::toString))
-                .contains("1", "2", "3");
+                .contains("1", "2", "3", "4");
         assertThat(flyway.info().pending()).isEmpty();
     }
 
     @Test
-    @DisplayName("三张业务表和查询索引都已创建")
+    @DisplayName("业务表和查询索引都已创建")
     void tablesAndIndexesCreated() throws SQLException {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        for (String table : new String[]{"seller", "product", "purchase_intent"}) {
+        for (String table : new String[]{"seller", "product", "purchase_intent", "category", "product_image", "customer"}) {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Long.class)).isNotNull();
         }
-        assertThat(indexNames(dataSource, "product")).contains("idx_product_status_time");
-        assertThat(indexNames(dataSource, "purchase_intent")).contains("idx_intent_product_status");
+        assertThat(indexNames(dataSource, "product")).contains("idx_product_status_time", "idx_product_category_time");
+        assertThat(indexNames(dataSource, "purchase_intent")).contains("idx_intent_product_status", "idx_intent_customer_time");
+        assertThat(indexNames(dataSource, "category")).contains("uk_category_parent_name");
+        assertThat(indexNames(dataSource, "product_image")).contains("idx_product_image_product");
+        assertThat(indexNames(dataSource, "customer")).contains("idx_customer_create_time");
     }
 
     @Test
@@ -101,6 +104,28 @@ class DatabaseMigrationTest {
                 .isEqualTo("123456");
         assertThat(jdbc.queryForObject("SELECT name FROM product", String.class)).isEqualTo("已有商品");
         assertThat(indexNames(existing, "product")).contains("idx_product_status_time");
+    }
+
+    @Test
+    @DisplayName("已有商品补上库存和图片：在售的按 1 件计、已下架的为 0，原来的图片搬进图片表；已有意向不关联客户")
+    void existingDataMigratedToV4() {
+        DataSource existing = h2("existing_v4_db");
+        ResourceDatabasePopulator populator = new ResourceDatabasePopulator(new ClassPathResource("db/existing-database.sql"));
+        populator.setSqlScriptEncoding(StandardCharsets.UTF_8.name());
+        populator.execute(existing);
+        JdbcTemplate jdbc = new JdbcTemplate(existing);
+        jdbc.update("INSERT INTO product (name, image, price, status, create_time, finish_time) "
+                + "VALUES ('已售出的台灯', '/api/uploads/lamp.png', 35.00, 'DELISTED', '2026-10-09 10:00:00', '2026-10-10 10:00:00')");
+        jdbc.update("INSERT INTO purchase_intent (product_id, name, phone, code, position, status, create_time) "
+                + "SELECT id, '老买家', '13800009999', 'OLDCODE1', 1, 'QUEUING', '2026-10-09 11:00:00' FROM product WHERE name = '已有商品'");
+
+        migrateWithAppSettings(existing);
+
+        assertThat(jdbc.queryForObject("SELECT stock FROM product WHERE name = '已有商品'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT stock FROM product WHERE name = '已售出的台灯'", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT category_id FROM product WHERE name = '已有商品'", Long.class)).isNull();
+        assertThat(jdbc.queryForList("SELECT url FROM product_image", String.class)).containsExactly("/api/uploads/lamp.png");
+        assertThat(jdbc.queryForObject("SELECT customer_id FROM purchase_intent", Long.class)).isNull();
     }
 
     @Test

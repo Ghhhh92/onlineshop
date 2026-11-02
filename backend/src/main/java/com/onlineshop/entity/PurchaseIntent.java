@@ -36,4 +36,7 @@ public class PurchaseIntent {
     private IntentStatus status;
 
     private LocalDateTime createTime;
+
+    /** 提交意向的客户 id，匿名提交时为空 */
+    private Long customerId;
 }

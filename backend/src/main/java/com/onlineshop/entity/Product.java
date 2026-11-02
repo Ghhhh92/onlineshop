@@ -29,11 +29,17 @@ public class Product {
     /** 商品描述，选填 */
     private String description;
 
-    /** 商品图片地址，选填 */
+    /** 封面图片地址（第一张图片），没有图片时为空；全部图片在 product_image 表 */
     private String image;
 
     /** 价格，单位元，两位小数 */
     private BigDecimal price;
+
+    /** 库存数量，减到 0 时自动下架 */
+    private Integer stock;
+
+    /** 所属二级类别 id，为空表示未分类 */
+    private Long categoryId;
 
     /** 商品状态，在库里存枚举名（ON_SALE / FROZEN / DELISTED） */
     private ProductStatus status;
