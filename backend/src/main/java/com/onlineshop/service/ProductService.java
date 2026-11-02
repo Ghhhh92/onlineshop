@@ -1,6 +1,7 @@
 package com.onlineshop.service;
 
 import com.onlineshop.common.BizException;
+import com.onlineshop.common.RichTextSanitizer;
 import com.onlineshop.dto.PublishProductRequest;
 import com.onlineshop.entity.Product;
 import com.onlineshop.enums.ProductStatus;
@@ -28,20 +29,24 @@ public class ProductService {
 
     private final ProductMapper productMapper;
     private final ProductImageMapper productImageMapper;
+    private final ProductImageService productImageService;
     private final ProductStateMachine productStateMachine;
 
     /**
-     * 发布商品（US-13、US-31）：商品以「在售」状态保存。可以同时有多件商品在售，已有在售或交易中的商品时照样能发布。
+     * 发布商品（US-13、US-31、US-35）：商品以「在售」状态保存。可以同时有多件商品在售，已有在售或交易中的商品时照样能发布。
      * <p>
-     * 名称去掉首尾空格，没填的描述和图片存为 null；价格统一保留两位小数；没选类别的归入未分类；
+     * 名称去掉首尾空格；描述按富文本过滤，没填时存为 null；图片只接受上传接口返回的地址，按顺序保存，第一张作为封面；
+     * 价格统一保留两位小数；没选类别的归入未分类；
      * 发布时间精确到秒，和数据库 DATETIME 存下来的一致，发布时返回的和之后查到的相同。
      */
     @Transactional
     public Product publish(PublishProductRequest request) {
+        List<String> images = checkImages(request.getImages());
+
         Product product = new Product();
         product.setName(request.getName().trim());
-        product.setDescription(blankToNull(request.getDescription()));
-        product.setImage(blankToNull(request.getImage()));
+        product.setDescription(RichTextSanitizer.sanitize(request.getDescription()));
+        product.setImage(images.isEmpty() ? null : images.get(0));
         // 入参校验已保证最多两位小数，这里只补齐成两位，不会发生舍入
         product.setPrice(request.getPrice().setScale(2, RoundingMode.UNNECESSARY));
         product.setStock(request.getStock());
@@ -49,14 +54,24 @@ public class ProductService {
         product.setStatus(ProductStatus.ON_SALE);
         product.setCreateTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
         productMapper.insert(product);
-        if (product.getImage() != null) {
-            productImageMapper.insertAll(product.getId(), List.of(product.getImage()));
-        }
+        productImageMapper.insertAll(product.getId(), images);
         return product;
     }
 
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+    /**
+     * 图片必须是上传接口保存过的（US-27）；重复的只留第一次出现的，顺序不变
+     */
+    private List<String> checkImages(List<String> urls) {
+        if (urls == null) {
+            return List.of();
+        }
+        List<String> images = urls.stream().distinct().toList();
+        for (String url : images) {
+            if (!productImageService.isStored(url)) {
+                throw new BizException("图片地址无效，请重新上传");
+            }
+        }
+        return images;
     }
 
     /**

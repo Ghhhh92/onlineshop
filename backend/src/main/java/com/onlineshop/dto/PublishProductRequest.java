@@ -11,9 +11,10 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
- * 发布商品请求（US-13、US-26、US-33）：名称、价格和库存必填，描述、图片和类别选填。
+ * 发布商品请求（US-13、US-26、US-33、US-35）：名称、价格和库存必填，描述、图片和类别选填。
  *
  * @author 李帆
  * @date 2026-10-11
@@ -25,12 +26,13 @@ public class PublishProductRequest {
     @Size(max = 100, message = "商品名称不能超过 100 个字符")
     private String name;
 
-    @Size(max = 2000, message = "商品描述不能超过 2000 个字符")
+    /** 富文本（HTML），可以嵌入图片和视频；保存前过滤掉脚本等不安全的内容 */
+    @Size(max = 10000, message = "商品描述不能超过 10000 个字符")
     private String description;
 
-    /** 图片地址 */
-    @Size(max = 500, message = "图片地址不能超过 500 个字符")
-    private String image;
+    /** 图片地址，先用上传接口逐张上传；按展示顺序排列，第一张是封面 */
+    @Size(max = 9, message = "最多 9 张图片")
+    private List<String> images;
 
     /** 价格，单位元：大于 0，最多两位小数，不超过 99999999.99（数据库 DECIMAL(10,2) 的上限） */
     @NotNull(message = "价格不能为空")

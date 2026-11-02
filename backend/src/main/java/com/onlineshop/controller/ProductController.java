@@ -9,6 +9,7 @@ import com.onlineshop.dto.PublishProductRequest;
 import com.onlineshop.entity.Product;
 import com.onlineshop.service.BuyerProductService;
 import com.onlineshop.service.ProductImageService;
+import com.onlineshop.service.ProductInfoAssembler;
 import com.onlineshop.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class ProductController {
     private final ProductService productService;
     private final ProductImageService productImageService;
     private final BuyerProductService buyerProductService;
+    private final ProductInfoAssembler productInfoAssembler;
 
     /**
      * 发布商品（卖家后台，需要登录）。已有在售商品时也可以继续发布（US-31）。
@@ -42,12 +44,12 @@ public class ProductController {
     @RequireLogin
     @PostMapping("/publish")
     public Result<ProductInfo> publish(@Valid @RequestBody PublishProductRequest request) {
-        return Result.success(ProductInfo.from(productService.publish(request)));
+        return Result.success(productInfoAssembler.toInfo(productService.publish(request)));
     }
 
     /**
-     * 上传商品主图（US-27，卖家后台，需要登录）：表单字段 file，JPG 或 PNG，不超过 5MB。
-     * 返回图片地址，发布商品时填进 image 字段。
+     * 上传一张商品图片（US-27，卖家后台，需要登录）：表单字段 file，JPG 或 PNG，不超过 5MB。
+     * 返回图片地址：发布商品时按顺序放进 images；富文本描述里插图也用这个地址。
      */
     @RequireLogin
     @PostMapping("/image")
@@ -82,6 +84,6 @@ public class ProductController {
     @GetMapping("/on-sale")
     public Result<ProductInfo> getOnSale() {
         Product product = productService.getCurrentProduct();
-        return Result.success(product == null ? null : ProductInfo.from(product));
+        return Result.success(product == null ? null : productInfoAssembler.toInfo(product));
     }
 }

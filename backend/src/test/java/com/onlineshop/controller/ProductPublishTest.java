@@ -94,10 +94,28 @@ class ProductPublishTest {
     @Test
     @DisplayName("描述和图片不填：允许发布，存为空")
     void descriptionAndImageOptional() throws Exception {
-        publish("{\"name\":\"台灯\",\"price\":10,\"description\":\"\",\"image\":\"\",\"stock\":1}")
+        publish("{\"name\":\"台灯\",\"price\":10,\"description\":\"\",\"images\":[],\"stock\":1}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.description").isEmpty())
-                .andExpect(jsonPath("$.data.image").isEmpty());
+                .andExpect(jsonPath("$.data.image").isEmpty())
+                .andExpect(jsonPath("$.data.images").isEmpty());
+    }
+
+    @Test
+    @DisplayName("富文本描述：保留排版和图片，去掉脚本（US-35）")
+    void richTextDescription() throws Exception {
+        publish("{\"name\":\"台灯\",\"price\":10,\"stock\":1,\"description\":"
+                + "\"<p>九成新<img src=\\\"/api/uploads/a.png\\\"></p><script>alert(1)</script>\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.description").value("<p>九成新<img src=\"/api/uploads/a.png\"></p>"));
+    }
+
+    @Test
+    @DisplayName("描述超过 10000 个字符：拒绝")
+    void descriptionTooLong() throws Exception {
+        publish("{\"name\":\"台灯\",\"price\":10,\"stock\":1,\"description\":\"" + "长".repeat(10001) + "\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("商品描述不能超过 10000 个字符"));
     }
 
     @Test

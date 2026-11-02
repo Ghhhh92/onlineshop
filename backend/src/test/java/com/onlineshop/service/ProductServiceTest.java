@@ -14,11 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -50,21 +48,19 @@ class ProductServiceTest {
         PublishProductRequest request = new PublishProductRequest();
         request.setName(name);
         request.setDescription("描述");
-        request.setImage("img");
         request.setPrice(new BigDecimal(price));
         request.setStock(1);
         return request;
     }
 
     @Test
-    @DisplayName("发布成功，状态为在售，图片记进图片表")
+    @DisplayName("发布成功，状态为在售")
     void publishSuccess() {
         Product product = productService.publish(publishRequest("iPhone", "6999"));
 
         assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
         assertThat(product.getStock()).isEqualTo(1);
         verify(productMapper).insert(any(Product.class));
-        verify(productImageMapper).insertAll(any(), eq(List.of("img")));
     }
 
     @Test

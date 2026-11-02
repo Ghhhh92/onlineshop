@@ -23,13 +23,14 @@ import org.springframework.stereotype.Service;
 public class BuyerProductService {
 
     private final ProductMapper productMapper;
+    private final ProductInfoAssembler productInfoAssembler;
 
     /**
      * 在售和交易中的商品，按发布时间倒序分页；categoryId 不为空时只看这个类别的商品
      */
     public PageResult<ProductInfo> list(Long categoryId, int page, int size) {
         Page<Product> result = productMapper.selectBuyerPage(Pages.of(page, size), categoryId);
-        return new PageResult<>(result.getRecords().stream().map(ProductInfo::from).toList(), result.getTotal());
+        return new PageResult<>(productInfoAssembler.toInfos(result.getRecords()), result.getTotal());
     }
 
     /**
@@ -40,6 +41,6 @@ public class BuyerProductService {
         if (product == null || product.getStatus() == ProductStatus.DELISTED) {
             throw new BizException(404, "商品不存在或已下架");
         }
-        return ProductInfo.from(product);
+        return productInfoAssembler.toInfo(product);
     }
 }

@@ -29,13 +29,14 @@ public class SellerProductQueryService {
 
     private final ProductMapper productMapper;
     private final PurchaseIntentMapper intentMapper;
+    private final ProductInfoAssembler productInfoAssembler;
 
     /**
      * 当前商品：最新发布的在售或已冻结（交易中）商品，没有时返回 null
      */
     public ProductInfo currentProduct() {
         Product product = productMapper.selectCurrent();
-        return product == null ? null : ProductInfo.from(product);
+        return product == null ? null : productInfoAssembler.toInfo(product);
     }
 
     /**
@@ -43,14 +44,14 @@ public class SellerProductQueryService {
      */
     public PageResult<ProductInfo> list(ProductStatus status, Long categoryId, int page, int size) {
         Page<Product> result = productMapper.selectSellerPage(Pages.of(page, size), status, categoryId);
-        return new PageResult<>(result.getRecords().stream().map(ProductInfo::from).toList(), result.getTotal());
+        return new PageResult<>(productInfoAssembler.toInfos(result.getRecords()), result.getTotal());
     }
 
     /**
      * 商品详情（任何状态），不存在时返回 404
      */
     public ProductInfo detail(Long id) {
-        return ProductInfo.from(getOrThrow(id));
+        return productInfoAssembler.toInfo(getOrThrow(id));
     }
 
     /**
@@ -73,7 +74,7 @@ public class SellerProductQueryService {
      */
     public PageResult<ProductInfo> history(int page, int size) {
         Page<Product> result = productMapper.selectHistoryPage(Pages.of(page, size));
-        return new PageResult<>(result.getRecords().stream().map(ProductInfo::from).toList(), result.getTotal());
+        return new PageResult<>(productInfoAssembler.toInfos(result.getRecords()), result.getTotal());
     }
 
     private Product getOrThrow(Long id) {
