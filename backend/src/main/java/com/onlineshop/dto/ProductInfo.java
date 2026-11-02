@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
  * @param description 描述，没填时为 null
  * @param image       图片地址，没填时为 null
  * @param price       价格，固定两位小数
+ * @param stock       库存数量
+ * @param categoryId  所属二级类别 id，未分类时为 null
  * @param status      状态（ON_SALE / FROZEN / DELISTED）
  * @param statusText  状态的中文（在售 / 已冻结 / 已下架）
  * @param createTime  发布时间
@@ -22,12 +24,13 @@ import java.time.LocalDateTime;
  * @date 2026-10-11
  */
 public record ProductInfo(Long id, String name, String description, String image, BigDecimal price,
-                          ProductStatus status, String statusText,
+                          Integer stock, Long categoryId, ProductStatus status, String statusText,
                           LocalDateTime createTime, LocalDateTime finishTime) {
 
     public static ProductInfo from(Product product) {
         return new ProductInfo(product.getId(), product.getName(), product.getDescription(), product.getImage(),
-                product.getPrice(), product.getStatus(), product.getStatus().getDesc(),
+                product.getPrice(), product.getStock(), product.getCategoryId(),
+                product.getStatus(), product.getStatus().getDesc(),
                 product.getCreateTime(), product.getFinishTime());
     }
 }

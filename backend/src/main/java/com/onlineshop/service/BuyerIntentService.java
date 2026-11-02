@@ -39,15 +39,12 @@ public class BuyerIntentService {
     /**
      * 提交购买意向，返回口令码和当前位次。
      * <p>
-     * 先锁住当前商品这一行，再检查状态、计算序号、写入意向：多人同时提交时一个接一个执行，
-     * 序号严格按提交顺序递增（先到先得）；商品被冻结的那一刻之后，不会再混进新的意向。
+     * 先锁住要买的商品这一行，再检查状态、计算序号、写入意向：同一件商品多人同时提交时一个接一个执行，
+     * 序号严格按提交顺序递增（先到先得）；商品被冻结的那一刻之后，不会再混进新的意向。每件商品各排各的队。
      */
     @Transactional
     public IntentSubmitResult submit(SubmitIntentRequest request) {
-        Product product = productMapper.selectCurrentForUpdate();
-        if (product == null) {
-            throw new BizException("暂无在售商品");
-        }
+        Product product = lockProduct(request.getProductId());
         if (product.getStatus() == ProductStatus.FROZEN) {
             throw new BizException("商品交易中");
         }
@@ -97,6 +94,27 @@ public class BuyerIntentService {
             IntentStatus now = intentMapper.selectById(intent.getId()).getStatus();
             throw new BizException(now == IntentStatus.TRADING ? "正在交易中，不能撤销" : "口令码已失效");
         }
+    }
+
+    /**
+     * 锁住要买的商品这一行并返回。没传商品 id 时用最新发布的在售或交易中商品。
+     */
+    private Product lockProduct(Long productId) {
+        if (productId == null) {
+            Product current = productMapper.selectCurrentForUpdate();
+            if (current == null) {
+                throw new BizException("暂无在售商品");
+            }
+            return current;
+        }
+        Product product = productMapper.selectByIdForUpdate(productId);
+        if (product == null) {
+            throw new BizException(404, "商品不存在");
+        }
+        if (product.getStatus() == ProductStatus.DELISTED) {
+            throw new BizException("商品已下架");
+        }
+        return product;
     }
 
     /** 按口令码查意向，不区分大小写，前后空格忽略；不存在时返回 404 */

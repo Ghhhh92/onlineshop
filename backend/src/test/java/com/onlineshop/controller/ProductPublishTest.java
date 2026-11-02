@@ -1,5 +1,6 @@
 package com.onlineshop.controller;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.onlineshop.entity.Product;
 import com.onlineshop.enums.ProductStatus;
 import com.onlineshop.mapper.ProductMapper;
@@ -29,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 发布商品（US-13）、价格约束（US-26），以及发布时的单件在售约束（US-14）。
+ * 发布商品（US-13）、价格约束（US-26）、库存（US-33）和类别（US-32），以及同时发布多件商品（US-31）。
  * 每个用例结束后回滚。
  *
  * @author 李帆
@@ -63,12 +64,13 @@ class ProductPublishTest {
     @Test
     @DisplayName("填了名称和价格：发布成功，商品进入在售")
     void publishWithNameAndPrice() throws Exception {
-        publish("{\"name\":\"二手键盘\",\"price\":12.5}")
+        publish("{\"name\":\"二手键盘\",\"price\":12.5,\"stock\":3}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").isNumber())
                 .andExpect(jsonPath("$.data.name").value("二手键盘"))
                 .andExpect(jsonPath("$.data.status").value("ON_SALE"))
                 .andExpect(jsonPath("$.data.statusText").value("在售"))
+                .andExpect(jsonPath("$.data.stock").value(3))
                 .andExpect(jsonPath("$.data.createTime").value(matchesPattern(DATE_TIME)))
                 .andExpect(content().string(containsString("\"price\":12.50")));
     }
@@ -76,7 +78,7 @@ class ProductPublishTest {
     @Test
     @DisplayName("名称为空：提示必填")
     void blankName() throws Exception {
-        publish("{\"name\":\"  \",\"price\":10}")
+        publish("{\"name\":\"  \",\"price\":10,\"stock\":1}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("商品名称不能为空"));
     }
@@ -84,7 +86,7 @@ class ProductPublishTest {
     @Test
     @DisplayName("价格为空：提示必填")
     void missingPrice() throws Exception {
-        publish("{\"name\":\"台灯\"}")
+        publish("{\"name\":\"台灯\",\"stock\":1}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("价格不能为空"));
     }
@@ -92,7 +94,7 @@ class ProductPublishTest {
     @Test
     @DisplayName("描述和图片不填：允许发布，存为空")
     void descriptionAndImageOptional() throws Exception {
-        publish("{\"name\":\"台灯\",\"price\":10,\"description\":\"\",\"image\":\"\"}")
+        publish("{\"name\":\"台灯\",\"price\":10,\"description\":\"\",\"image\":\"\",\"stock\":1}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.description").isEmpty())
                 .andExpect(jsonPath("$.data.image").isEmpty());
@@ -101,17 +103,17 @@ class ProductPublishTest {
     @Test
     @DisplayName("名称首尾的空格会去掉")
     void nameTrimmed() throws Exception {
-        publish("{\"name\":\"  台灯  \",\"price\":10}")
+        publish("{\"name\":\"  台灯  \",\"price\":10,\"stock\":1}")
                 .andExpect(jsonPath("$.data.name").value("台灯"));
     }
 
     @Test
     @DisplayName("价格为 0 或负数：拒绝")
     void priceMustBePositive() throws Exception {
-        publish("{\"name\":\"台灯\",\"price\":0}")
+        publish("{\"name\":\"台灯\",\"price\":0,\"stock\":1}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("价格必须大于 0"));
-        publish("{\"name\":\"台灯\",\"price\":-5}")
+        publish("{\"name\":\"台灯\",\"price\":-5,\"stock\":1}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("价格必须大于 0"));
     }
@@ -119,7 +121,7 @@ class ProductPublishTest {
     @Test
     @DisplayName("价格超过两位小数：拒绝并提示")
     void priceAtMostTwoDecimals() throws Exception {
-        publish("{\"name\":\"台灯\",\"price\":12.345}")
+        publish("{\"name\":\"台灯\",\"price\":12.345,\"stock\":1}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("价格最多两位小数，且不能超过 99999999.99"));
     }
@@ -127,26 +129,64 @@ class ProductPublishTest {
     @Test
     @DisplayName("价格超过数据库能存的上限：拒绝")
     void priceTooLarge() throws Exception {
-        publish("{\"name\":\"台灯\",\"price\":100000000}")
+        publish("{\"name\":\"台灯\",\"price\":100000000,\"stock\":1}")
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     @DisplayName("名称超过 100 个字符：拒绝")
     void nameTooLong() throws Exception {
-        publish("{\"name\":\"" + "长".repeat(101) + "\",\"price\":10}")
+        publish("{\"name\":\"" + "长".repeat(101) + "\",\"price\":10,\"stock\":1}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("商品名称不能超过 100 个字符"));
     }
 
     @Test
-    @DisplayName("已有在售商品时不能再发布")
-    void secondPublishRejected() throws Exception {
-        publish("{\"name\":\"第一件\",\"price\":10}").andExpect(status().isOk());
+    @DisplayName("已有在售、交易中的商品时可以继续发布，多件商品同时在售（US-31）")
+    void publishMultipleProducts() throws Exception {
+        Product trading = new Product();
+        trading.setName("交易中的商品");
+        trading.setPrice(new BigDecimal("20.00"));
+        trading.setStatus(ProductStatus.FROZEN);
+        trading.setCreateTime(LocalDateTime.of(2026, 11, 1, 10, 0));
+        productMapper.insert(trading);
+        long onSaleBefore = countOnSale();
 
-        publish("{\"name\":\"第二件\",\"price\":10}")
+        publish("{\"name\":\"第一件\",\"price\":10,\"stock\":1}").andExpect(status().isOk());
+        publish("{\"name\":\"第二件\",\"price\":10,\"stock\":1}").andExpect(status().isOk());
+
+        assertThat(countOnSale()).isEqualTo(onSaleBefore + 2);
+        assertThat(productMapper.selectById(trading.getId()).getStatus()).isEqualTo(ProductStatus.FROZEN);
+    }
+
+    @Test
+    @DisplayName("库存必填，1～99999 件，发布后原样返回")
+    void stockRequiredAndInRange() throws Exception {
+        publish("{\"name\":\"台灯\",\"price\":10}")
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("已有在售或交易中的商品，无法发布新商品"));
+                .andExpect(jsonPath("$.message").value("库存不能为空"));
+        publish("{\"name\":\"台灯\",\"price\":10,\"stock\":0}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("库存至少为 1"));
+        publish("{\"name\":\"台灯\",\"price\":10,\"stock\":100000}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("库存不能超过 99999"));
+        publish("{\"name\":\"台灯\",\"price\":10,\"stock\":99999}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stock").value(99999));
+    }
+
+    @Test
+    @DisplayName("选了类别时记下类别，没选时为未分类（categoryId 为空）")
+    void category() throws Exception {
+        publish("{\"name\":\"台灯\",\"price\":10,\"stock\":1,\"categoryId\":5}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.categoryId").value(5));
+        publish("{\"name\":\"台灯\",\"price\":10,\"stock\":1}")
+                .andExpect(jsonPath("$.data.categoryId").isEmpty());
+        publish("{\"name\":\"台灯\",\"price\":10,\"stock\":1,\"categoryId\":0}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("类别不正确"));
     }
 
     @Test
@@ -159,13 +199,13 @@ class ProductPublishTest {
         old.setCreateTime(LocalDateTime.of(2026, 10, 1, 10, 0));
         productMapper.insert(old);
 
-        publish("{\"name\":\"新商品\",\"price\":10}").andExpect(status().isOk());
+        publish("{\"name\":\"新商品\",\"price\":10,\"stock\":1}").andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("发布时返回的价格、时间和之后查询到的完全一致")
     void publishedEqualsQueried() throws Exception {
-        String published = publish("{\"name\":\"台灯\",\"price\":8}")
+        String published = publish("{\"name\":\"台灯\",\"price\":8,\"stock\":1}")
                 .andReturn().getResponse().getContentAsString();
         String queried = mockMvc.perform(get("/api/product/on-sale"))
                 .andReturn().getResponse().getContentAsString();
@@ -176,5 +216,9 @@ class ProductPublishTest {
     private ResultActions publish(String body) throws Exception {
         return mockMvc.perform(post("/api/product/publish").session(seller)
                 .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    private long countOnSale() {
+        return productMapper.selectCount(Wrappers.<Product>lambdaQuery().eq(Product::getStatus, ProductStatus.ON_SALE));
     }
 }

@@ -2,15 +2,18 @@ package com.onlineshop.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 /**
- * 发布商品请求（US-13、US-26）：名称和价格必填，描述和图片选填。
+ * 发布商品请求（US-13、US-26、US-33）：名称、价格和库存必填，描述、图片和类别选填。
  *
  * @author 李帆
  * @date 2026-10-11
@@ -34,4 +37,14 @@ public class PublishProductRequest {
     @DecimalMin(value = "0.01", message = "价格必须大于 0")
     @Digits(integer = 8, fraction = 2, message = "价格最多两位小数，且不能超过 99999999.99")
     private BigDecimal price;
+
+    /** 库存数量，减到 0 时商品自动下架 */
+    @NotNull(message = "库存不能为空")
+    @Min(value = 1, message = "库存至少为 1")
+    @Max(value = 99999, message = "库存不能超过 99999")
+    private Integer stock;
+
+    /** 所属二级类别 id，不选时为未分类 */
+    @Positive(message = "类别不正确")
+    private Long categoryId;
 }

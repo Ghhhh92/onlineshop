@@ -164,7 +164,7 @@ class ProductImageTest {
 
         mockMvc.perform(post("/api/product/publish").session(seller)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"台灯\",\"price\":35,\"image\":\"" + url + "\"}"))
+                        .content("{\"name\":\"台灯\",\"price\":35,\"stock\":1,\"image\":\"" + url + "\"}"))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/product/on-sale"))
                 .andExpect(jsonPath("$.data.image").value(url));
