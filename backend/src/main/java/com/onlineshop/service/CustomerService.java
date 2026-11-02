@@ -1,6 +1,10 @@
 package com.onlineshop.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.onlineshop.common.BizException;
+import com.onlineshop.common.Pages;
+import com.onlineshop.dto.CustomerInfo;
+import com.onlineshop.dto.PageResult;
 import com.onlineshop.dto.RegisterRequest;
 import com.onlineshop.entity.Customer;
 import com.onlineshop.mapper.CustomerMapper;
@@ -13,7 +17,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 /**
- * 客户服务：注册（US-36）、登录校验、查询当前客户
+ * 客户服务：注册（US-36）、登录校验、查询当前客户，卖家查看客户列表（US-38）
  *
  * @author 李帆
  * @date 2026-11-02
@@ -70,5 +74,22 @@ public class CustomerService {
             throw new BizException(401, "请先登录");
         }
         return customer;
+    }
+
+    /**
+     * 全部注册客户，按注册时间倒序分页（卖家查看客户，US-38）
+     */
+    public PageResult<CustomerInfo> list(int page, int size) {
+        Page<Customer> result = customerMapper.selectLatestPage(Pages.of(page, size));
+        return new PageResult<>(result.getRecords().stream().map(CustomerInfo::from).toList(), result.getTotal());
+    }
+
+    /**
+     * 客户不存在时返回 404
+     */
+    public void checkExists(Long id) {
+        if (customerMapper.selectById(id) == null) {
+            throw new BizException(404, "客户不存在");
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.onlineshop.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.onlineshop.entity.PurchaseIntent;
 import com.onlineshop.enums.IntentStatus;
 import org.apache.ibatis.annotations.Mapper;
@@ -76,6 +77,16 @@ public interface PurchaseIntentMapper extends BaseMapper<PurchaseIntent> {
                 .eq(PurchaseIntent::getProductId, productId)
                 .orderByAsc(PurchaseIntent::getPosition)
                 .orderByAsc(PurchaseIntent::getId));
+    }
+
+    /**
+     * 某个客户的全部意向（下单记录），按提交时间倒序分页
+     */
+    default Page<PurchaseIntent> selectCustomerPage(Page<PurchaseIntent> page, Long customerId) {
+        return selectPage(page, Wrappers.<PurchaseIntent>lambdaQuery()
+                .eq(PurchaseIntent::getCustomerId, customerId)
+                .orderByDesc(PurchaseIntent::getCreateTime)
+                .orderByDesc(PurchaseIntent::getId));
     }
 
     /**
