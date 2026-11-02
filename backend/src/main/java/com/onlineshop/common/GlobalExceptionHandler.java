@@ -1,5 +1,6 @@
 package com.onlineshop.common;
 
+import com.onlineshop.service.ProductImageService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -92,6 +94,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<Result<Void>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
         return fail(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "不支持的请求内容类型");
+    }
+
+    /** 上传的文件超过 spring.servlet.multipart.max-file-size（目前只有商品图片会上传文件） */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Result<Void>> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        return fail(HttpStatus.BAD_REQUEST, ProductImageService.TOO_LARGE_MESSAGE);
     }
 
     /**

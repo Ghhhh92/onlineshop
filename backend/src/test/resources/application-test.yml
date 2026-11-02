@@ -19,6 +19,11 @@ mybatis-plus:
     db-config:
       id-type: auto
 
+shop:
+  upload:
+    # 测试上传的图片放在 target 下，mvn clean 时一起删除
+    dir: target/test-uploads
+
 logging:
   level:
     com.onlineshop.mapper: info
