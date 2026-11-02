@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 商品图片上传（US-27）：只收 JPG、PNG，单张不超过 5MB，保存到本地目录，返回图片的访问地址。
@@ -34,6 +36,9 @@ public class ProductImageService {
     private static final byte[] JPEG_HEADER = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
 
     private static final byte[] PNG_HEADER = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+
+    /** 上传后返回的地址：前缀 + 32 位随机文件名 + .jpg 或 .png */
+    private static final Pattern STORED_URL = Pattern.compile(Pattern.quote(URL_PREFIX) + "([0-9a-f]{32}\\.(?:jpg|png))");
 
     private final Path directory;
 
@@ -69,6 +74,17 @@ public class ProductImageService {
         } catch (IOException e) {
             throw new UncheckedIOException("保存商品图片失败", e);
         }
+    }
+
+    /**
+     * 是不是上传接口返回过、而且文件还在的图片地址。发布商品时只接受这样的地址。
+     */
+    public boolean isStored(String url) {
+        if (url == null) {
+            return false;
+        }
+        Matcher matcher = STORED_URL.matcher(url);
+        return matcher.matches() && Files.isRegularFile(directory.resolve(matcher.group(1)));
     }
 
     /** 按文件开头的字节识别格式：JPG 返回 .jpg，PNG 返回 .png，其他返回 null */

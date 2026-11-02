@@ -6,13 +6,16 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * 买家提交购买意向（US-04）：只填姓名和联系电话，不需要注册登录。
+ * 买家提交购买意向（US-04）：选好商品，只填姓名和联系电话，不需要注册登录。
  *
  * @author 李帆
  * @date 2026-10-19
  */
 @Data
 public class SubmitIntentRequest {
+
+    /** 要买的商品 id；不传时提交到最新发布的在售商品（只展示一件商品的首页用） */
+    private Long productId;
 
     @NotBlank(message = "请填写姓名")
     @Size(max = 50, message = "姓名不能超过 50 个字符")

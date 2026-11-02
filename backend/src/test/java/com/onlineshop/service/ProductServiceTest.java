@@ -1,10 +1,9 @@
 package com.onlineshop.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.onlineshop.common.BizException;
 import com.onlineshop.dto.PublishProductRequest;
 import com.onlineshop.entity.Product;
 import com.onlineshop.enums.ProductStatus;
+import com.onlineshop.mapper.ProductImageMapper;
 import com.onlineshop.mapper.ProductMapper;
 import com.onlineshop.statemachine.ProductStateMachine;
 import org.junit.jupiter.api.DisplayName;
@@ -17,14 +16,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 商品发布 + 单件在售约束 Service 单元测试（Mockito）
+ * 商品发布 Service 单元测试（Mockito）
  *
  * @author 叶文锦
  * @date 2026-10-13
@@ -34,6 +33,9 @@ class ProductServiceTest {
 
     @Mock
     private ProductMapper productMapper;
+
+    @Mock
+    private ProductImageMapper productImageMapper;
 
     @Mock
     private ProductStateMachine productStateMachine;
@@ -46,31 +48,29 @@ class ProductServiceTest {
         PublishProductRequest request = new PublishProductRequest();
         request.setName(name);
         request.setDescription("描述");
-        request.setImage("img");
         request.setPrice(new BigDecimal(price));
+        request.setStock(1);
         return request;
     }
 
     @Test
-    @DisplayName("无在售商品时发布成功，状态为在售")
+    @DisplayName("发布成功，状态为在售")
     void publishSuccess() {
-        when(productMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
-
         Product product = productService.publish(publishRequest("iPhone", "6999"));
 
         assertThat(product.getStatus()).isEqualTo(ProductStatus.ON_SALE);
+        assertThat(product.getStock()).isEqualTo(1);
         verify(productMapper).insert(any(Product.class));
     }
 
     @Test
-    @DisplayName("已有在售商品时发布被拒绝")
-    void publishRejectedWhenOnSaleExists() {
-        when(productMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(1L);
+    @DisplayName("可以同时发布多件商品：发布前不查已有的在售商品")
+    void publishMultipleProducts() {
+        productService.publish(publishRequest("iPhone", "6999"));
+        productService.publish(publishRequest("iPad", "3999"));
 
-        assertThatThrownBy(() -> productService.publish(publishRequest("iPhone", "6999")))
-                .isInstanceOf(BizException.class)
-                .hasMessageContaining("无法发布新商品");
-        verify(productMapper, never()).insert(any(Product.class));
+        verify(productMapper, never()).selectCount(any());
+        verify(productMapper, times(2)).insert(any(Product.class));
     }
 
     @Test

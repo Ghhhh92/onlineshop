@@ -106,7 +106,7 @@ class SellerAuthTest {
     @Test
     @DisplayName("未登录不能发布商品，登录后可以")
     void publishRequiresLogin() throws Exception {
-        String product = "{\"name\":\"测试商品\",\"price\":10}";
+        String product = "{\"name\":\"测试商品\",\"price\":10,\"stock\":1}";
 
         mockMvc.perform(post("/api/product/publish").contentType(MediaType.APPLICATION_JSON).content(product))
                 .andExpect(status().isUnauthorized());

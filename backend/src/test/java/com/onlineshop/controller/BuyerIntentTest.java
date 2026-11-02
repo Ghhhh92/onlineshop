@@ -4,6 +4,7 @@ import com.onlineshop.entity.Product;
 import com.onlineshop.entity.PurchaseIntent;
 import com.onlineshop.enums.IntentStatus;
 import com.onlineshop.enums.ProductStatus;
+import com.onlineshop.mapper.CustomerMapper;
 import com.onlineshop.mapper.ProductMapper;
 import com.onlineshop.mapper.PurchaseIntentMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -23,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -30,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 买家提交购买意向（US-04、US-05、US-29、US-30）与凭口令码查询（US-06、US-07、US-10）。
+ * 买家提交购买意向（US-04、US-05、US-29、US-30、US-31）与凭口令码查询（US-06、US-07、US-10）。
  * 每个用例先清空商品和意向，结束后回滚。
  *
  * @author 李帆
@@ -54,12 +57,16 @@ class BuyerIntentTest {
     private PurchaseIntentMapper intentMapper;
 
     @Autowired
+    private CustomerMapper customerMapper;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void clean() {
         jdbcTemplate.update("DELETE FROM purchase_intent");
         jdbcTemplate.update("DELETE FROM product");
+        jdbcTemplate.update("DELETE FROM customer");
     }
 
     @Test
@@ -198,6 +205,89 @@ class BuyerIntentTest {
                 .andExpect(jsonPath("$.message").value("口令码已失效"));
     }
 
+    @Test
+    @DisplayName("多件商品同时在售：按商品 id 提交到选中的商品，每件商品各排各的队（US-31）")
+    void submitToChosenProduct() throws Exception {
+        Product lamp = product(ProductStatus.ON_SALE);
+        Product book = product(ProductStatus.ON_SALE);
+
+        submitTo(lamp.getId(), "甲", "13800000001")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.position").value(1));
+        submitTo(book.getId(), "乙", "13800000002")
+                .andExpect(jsonPath("$.data.position").value(1));
+        submitTo(lamp.getId(), "丙", "13800000003")
+                .andExpect(jsonPath("$.data.position").value(2));
+        // 同一个手机号可以同时排不同商品的队
+        submitTo(book.getId(), "甲", "13800000001")
+                .andExpect(jsonPath("$.data.position").value(2));
+
+        assertThat(intentMapper.selectByProductInOrder(lamp.getId()))
+                .extracting(PurchaseIntent::getName).containsExactly("甲", "丙");
+        assertThat(intentMapper.selectByProductInOrder(book.getId()))
+                .extracting(PurchaseIntent::getName).containsExactly("乙", "甲");
+    }
+
+    @Test
+    @DisplayName("选中的商品交易中、已下架或不存在：分别提示，不影响其他在售商品")
+    void chosenProductUnavailable() throws Exception {
+        Product frozen = product(ProductStatus.FROZEN);
+        Product delisted = product(ProductStatus.DELISTED);
+        Product onSale = product(ProductStatus.ON_SALE);
+
+        submitTo(frozen.getId(), "张三", "13800000001")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("商品交易中"));
+        submitTo(delisted.getId(), "张三", "13800000001")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("商品已下架"));
+        submitTo(999999L, "张三", "13800000001")
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("商品不存在"));
+        submitTo(onSale.getId(), "张三", "13800000001")
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("客户登录后提交的意向记到客户名下，匿名提交的不关联客户（US-04、US-05）")
+    void intentLinkedToCustomer() throws Exception {
+        Product product = product(ProductStatus.ON_SALE);
+        MockHttpSession customer = registerCustomer();
+        Long customerId = customerMapper.selectByUsername("zhangsan").getId();
+
+        mockMvc.perform(post("/api/buyer/intent").session(customer).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":" + product.getId() + ",\"name\":\"张三\",\"phone\":\"13800000001\"}"))
+                .andExpect(status().isOk());
+        submitTo(product.getId(), "李四", "13800000002").andExpect(status().isOk());
+
+        assertThat(intentMapper.selectByProductInOrder(product.getId()))
+                .extracting(PurchaseIntent::getName, PurchaseIntent::getCustomerId)
+                .containsExactly(tuple("张三", customerId), tuple("李四", null));
+    }
+
+    @Test
+    @DisplayName("同一个客户在同一件商品还在排队时，换个手机号也不能重复提交")
+    void customerCannotQueueTwice() throws Exception {
+        Product product = product(ProductStatus.ON_SALE);
+        MockHttpSession customer = registerCustomer();
+
+        mockMvc.perform(post("/api/buyer/intent").session(customer).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":" + product.getId() + ",\"name\":\"张三\",\"phone\":\"13800000001\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/buyer/intent").session(customer).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":" + product.getId() + ",\"name\":\"张三\",\"phone\":\"13900000009\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("该账号已在排队中"));
+    }
+
+    private MockHttpSession registerCustomer() throws Exception {
+        return (MockHttpSession) mockMvc.perform(post("/api/customer/register").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"zhangsan\",\"password\":\"abc12345\",\"phone\":\"13800000001\","
+                                + "\"defaultLocation\":\"图书馆门口\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getRequest().getSession(false);
+    }
+
     private Product product(ProductStatus status) {
         Product product = new Product();
         product.setName("测试商品");
@@ -211,6 +301,11 @@ class BuyerIntentTest {
     private ResultActions submit(String name, String phone) throws Exception {
         return mockMvc.perform(post("/api/buyer/intent").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"" + name + "\",\"phone\":\"" + phone + "\"}"));
+    }
+
+    private ResultActions submitTo(Long productId, String name, String phone) throws Exception {
+        return mockMvc.perform(post("/api/buyer/intent").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productId\":" + productId + ",\"name\":\"" + name + "\",\"phone\":\"" + phone + "\"}"));
     }
 
     private static String codeOf(ResultActions result) throws Exception {

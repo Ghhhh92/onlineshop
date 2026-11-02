@@ -9,7 +9,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
 /**
- * 发布商品 + 单件在售约束 + 登录权限接口测试（US-13 / US-14 / UC-07）
+ * 发布商品 + 多商品发布 + 登录权限接口测试（US-13 / US-31 / UC-07）
  *
  * @author 叶文锦
  * @date 2026-10-13
@@ -39,7 +39,7 @@ class ProductApiTest extends BaseApiTest {
         given()
                 .cookie("JSESSIONID", sessionId)
                 .contentType(ContentType.JSON)
-                .body("{\"name\":\"iPhone\",\"description\":\"手机\",\"price\":6999.00}")
+                .body("{\"name\":\"iPhone\",\"description\":\"手机\",\"price\":6999.00,\"stock\":1}")
                 .when()
                 .post("/product/publish")
                 .then()
@@ -56,7 +56,7 @@ class ProductApiTest extends BaseApiTest {
         given()
                 .cookie("JSESSIONID", sessionId)
                 .contentType(ContentType.JSON)
-                .body("{\"name\":\"\",\"price\":10.00}")
+                .body("{\"name\":\"\",\"price\":10.00,\"stock\":1}")
                 .when()
                 .post("/product/publish")
                 .then()
@@ -71,7 +71,7 @@ class ProductApiTest extends BaseApiTest {
         given()
                 .cookie("JSESSIONID", sessionId)
                 .contentType(ContentType.JSON)
-                .body("{\"name\":\"iPhone\"}")
+                .body("{\"name\":\"iPhone\",\"stock\":1}")
                 .when()
                 .post("/product/publish")
                 .then()
@@ -86,7 +86,7 @@ class ProductApiTest extends BaseApiTest {
         given()
                 .cookie("JSESSIONID", sessionId)
                 .contentType(ContentType.JSON)
-                .body("{\"name\":\"iPhone\",\"price\":0}")
+                .body("{\"name\":\"iPhone\",\"price\":0,\"stock\":1}")
                 .when()
                 .post("/product/publish")
                 .then()
@@ -95,29 +95,29 @@ class ProductApiTest extends BaseApiTest {
     }
 
     @Test
-    @DisplayName("TC-PUB-04 已有在售商品时再发布被拒绝")
-    void publishRejectedWhenOnSaleExists() {
+    @DisplayName("TC-PUB-04 已有在售商品时可以继续发布第二件")
+    void publishSecondWhenOnSaleExists() {
         String sessionId = loginAsAdmin();
         // 先发布第一件
         given()
                 .cookie("JSESSIONID", sessionId)
                 .contentType(ContentType.JSON)
-                .body("{\"name\":\"iPhone\",\"price\":6999.00}")
+                .body("{\"name\":\"iPhone\",\"price\":6999.00,\"stock\":1}")
                 .when()
                 .post("/product/publish")
                 .then()
                 .statusCode(200);
 
-        // 再发布第二件应被拒
+        // 再发布第二件也成功
         given()
                 .cookie("JSESSIONID", sessionId)
                 .contentType(ContentType.JSON)
-                .body("{\"name\":\"iPad\",\"price\":3999.00}")
+                .body("{\"name\":\"iPad\",\"price\":3999.00,\"stock\":1}")
                 .when()
                 .post("/product/publish")
                 .then()
-                .statusCode(400)
-                .body("message", equalTo("已有在售或交易中的商品，无法发布新商品"));
+                .statusCode(200)
+                .body("data.status", equalTo("ON_SALE"));
     }
 
     @Test
@@ -125,7 +125,7 @@ class ProductApiTest extends BaseApiTest {
     void publishWithoutLoginRejected() {
         given()
                 .contentType(ContentType.JSON)
-                .body("{\"name\":\"iPhone\",\"price\":6999.00}")
+                .body("{\"name\":\"iPhone\",\"price\":6999.00,\"stock\":1}")
                 .when()
                 .post("/product/publish")
                 .then()
@@ -151,7 +151,7 @@ class ProductApiTest extends BaseApiTest {
         given()
                 .cookie("JSESSIONID", sessionId)
                 .contentType(ContentType.JSON)
-                .body("{\"name\":\"iPhone\",\"price\":6999.00}")
+                .body("{\"name\":\"iPhone\",\"price\":6999.00,\"stock\":1}")
                 .when()
                 .post("/product/publish")
                 .then()

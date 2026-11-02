@@ -117,7 +117,7 @@ class BuyerIntentConcurrencyTest {
             Callable<IntentSubmitResult> task = () -> {
                 start.await();
                 try {
-                    return buyerIntentService.submit(request);
+                    return buyerIntentService.submit(request, null);
                 } catch (BizException e) {
                     return null;
                 }

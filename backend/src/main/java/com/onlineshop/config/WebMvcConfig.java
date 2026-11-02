@@ -1,5 +1,6 @@
 package com.onlineshop.config;
 
+import com.onlineshop.auth.CustomerLoginInterceptor;
 import com.onlineshop.auth.LoginInterceptor;
 import com.onlineshop.service.ProductImageService;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +10,7 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Spring MVC 配置：注册登录拦截器，把上传的商品图片作为静态资源提供访问
+ * Spring MVC 配置：注册卖家和客户的登录拦截器，把上传的商品图片作为静态资源提供访问
  *
  * @author 李帆
  * @date 2026-10-11
@@ -19,12 +20,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final LoginInterceptor loginInterceptor;
+    private final CustomerLoginInterceptor customerLoginInterceptor;
     private final ProductImageService productImageService;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 拦截器只对标了 @RequireLogin 的接口生效，其余接口直接放行
+        // 卖家拦截器只对标了 @RequireLogin 的接口生效，客户拦截器只对标了 @RequireCustomerLogin 的接口生效，其余接口直接放行
         registry.addInterceptor(loginInterceptor).addPathPatterns("/api/**");
+        registry.addInterceptor(customerLoginInterceptor).addPathPatterns("/api/**");
     }
 
     @Override

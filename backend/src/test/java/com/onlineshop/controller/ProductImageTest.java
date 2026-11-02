@@ -22,10 +22,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -35,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 商品图片上传（US-27）：JPG 或 PNG、不超过 5MB；上传后的地址可直接访问，也可以填进发布商品。
+ * 商品图片上传（US-27）：JPG 或 PNG、不超过 5MB；上传后的地址可直接访问，发布商品时可以放多张（US-35）。
  * 测试上传的图片保存在 target/test-uploads，每个用例结束后清空。
  *
  * @author 李帆
@@ -164,10 +167,58 @@ class ProductImageTest {
 
         mockMvc.perform(post("/api/product/publish").session(seller)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"台灯\",\"price\":35,\"image\":\"" + url + "\"}"))
+                        .content("{\"name\":\"台灯\",\"price\":35,\"stock\":1,\"images\":[\"" + url + "\"]}"))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/product/on-sale"))
                 .andExpect(jsonPath("$.data.image").value(url));
+    }
+
+    @Test
+    @DisplayName("多张图片按给的顺序保存，第一张是封面；详情和列表都带全部图片（US-35）")
+    void publishWithMultipleImages() throws Exception {
+        String first = urlOf(upload(image("1.png", PNG)).andExpect(status().isOk()));
+        String second = urlOf(upload(image("2.jpg", JPEG)).andExpect(status().isOk()));
+        String third = urlOf(upload(image("3.png", PNG)).andExpect(status().isOk()));
+
+        String body = publish(List.of(second, first, third))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.image").value(second))
+                .andExpect(jsonPath("$.data.images", contains(second, first, third)))
+                .andReturn().getResponse().getContentAsString();
+        Integer id = JsonPath.read(body, "$.data.id");
+
+        mockMvc.perform(get("/api/product/" + id))
+                .andExpect(jsonPath("$.data.images", contains(second, first, third)));
+        mockMvc.perform(get("/api/product/list"))
+                .andExpect(jsonPath("$.data.records[0].image").value(second))
+                .andExpect(jsonPath("$.data.records[0].images", contains(second, first, third)));
+    }
+
+    @Test
+    @DisplayName("图片地址不是上传接口返回的、或者文件已经不在：拒绝发布")
+    void rejectsUnknownImageUrls() throws Exception {
+        String uploaded = urlOf(upload(image("1.png", PNG)).andExpect(status().isOk()));
+
+        for (String url : List.of("https://example.com/a.png", "/api/uploads/../application.yml",
+                "/api/uploads/00000000000000000000000000000000.png", "javascript:alert(1)")) {
+            publish(List.of(uploaded, url))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("图片地址无效，请重新上传"));
+        }
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM product", Long.class)).isZero();
+    }
+
+    @Test
+    @DisplayName("最多 9 张图片；同一个地址给了两次只保存一次")
+    void imageCountAndDuplicates() throws Exception {
+        String url = urlOf(upload(image("1.png", PNG)).andExpect(status().isOk()));
+
+        publish(Collections.nCopies(10, url))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("最多 9 张图片"));
+        publish(List.of(url, url))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.images", contains(url)));
     }
 
     @Test
@@ -179,6 +230,13 @@ class ProductImageTest {
 
     private ResultActions upload(MockMultipartFile file) throws Exception {
         return mockMvc.perform(multipart("/api/product/image").file(file).session(seller));
+    }
+
+    private ResultActions publish(List<String> images) throws Exception {
+        String array = images.stream().map(url -> "\"" + url + "\"").collect(Collectors.joining(","));
+        return mockMvc.perform(post("/api/product/publish").session(seller)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"台灯\",\"price\":35,\"stock\":1,\"images\":[" + array + "]}"));
     }
 
     private static String urlOf(ResultActions result) throws Exception {
