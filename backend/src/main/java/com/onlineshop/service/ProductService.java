@@ -75,6 +75,37 @@ public class ProductService {
     }
 
     /**
+     * 库存减 1（交易成功时调用，US-33），返回剩下的库存；剩 0 时调用方再把商品转为已下架。
+     * 库存已经是 0 时提示库存不足。
+     */
+    @Transactional
+    public int decreaseStock(Long id) {
+        if (!productMapper.decreaseStock(id)) {
+            getByIdOrThrow(id);
+            throw new BizException("库存不足");
+        }
+        return productMapper.selectById(id).getStock();
+    }
+
+    /**
+     * 卖家修改库存（补货，US-33）。商品因库存为 0 已下架时，经状态机恢复为在售，不用重新发布；
+     * 在售、交易中的商品只改库存，状态不变。
+     */
+    @Transactional
+    public Product updateStock(Long id, int stock) {
+        Product product = productMapper.selectByIdForUpdate(id);
+        if (product == null) {
+            throw new BizException(404, "商品不存在");
+        }
+        if (product.getStatus() == ProductStatus.DELISTED) {
+            productStateMachine.transit(product, ProductStatus.ON_SALE);
+        }
+        product.setStock(stock);
+        productMapper.updateById(product);
+        return product;
+    }
+
+    /**
      * 只展示一件商品的买家首页用：最新发布的在售或已冻结（交易中）商品，没有时返回 null
      */
     public Product getCurrentProduct() {
