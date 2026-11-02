@@ -37,13 +37,14 @@ public class BuyerIntentService {
     private final IntentCodeGenerator codeGenerator;
 
     /**
-     * 提交购买意向，返回口令码和当前位次。
+     * 提交购买意向，返回口令码和当前位次。customerId 是登录客户的 id，匿名提交时为 null；
+     * 客户登录后提交的意向记下客户 id，之后能在客户的下单记录里查到（US-04、US-05）。
      * <p>
      * 先锁住要买的商品这一行，再检查状态、计算序号、写入意向：同一件商品多人同时提交时一个接一个执行，
      * 序号严格按提交顺序递增（先到先得）；商品被冻结的那一刻之后，不会再混进新的意向。每件商品各排各的队。
      */
     @Transactional
-    public IntentSubmitResult submit(SubmitIntentRequest request) {
+    public IntentSubmitResult submit(SubmitIntentRequest request, Long customerId) {
         Product product = lockProduct(request.getProductId());
         if (product.getStatus() == ProductStatus.FROZEN) {
             throw new BizException("商品交易中");
@@ -51,6 +52,9 @@ public class BuyerIntentService {
         String phone = request.getPhone().trim();
         if (intentMapper.existsActiveByPhone(product.getId(), phone)) {
             throw new BizException("该手机号已在排队中");
+        }
+        if (customerId != null && intentMapper.existsActiveByCustomer(product.getId(), customerId)) {
+            throw new BizException("该账号已在排队中");
         }
 
         PurchaseIntent intent = new PurchaseIntent();
@@ -61,6 +65,7 @@ public class BuyerIntentService {
         intent.setPosition(intentMapper.selectMaxPosition(product.getId()) + 1);
         intent.setStatus(IntentStatus.QUEUING);
         intent.setCreateTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        intent.setCustomerId(customerId);
         intentMapper.insert(intent);
 
         return new IntentSubmitResult(intent.getCode(), currentPosition(intent), intent.getCreateTime());

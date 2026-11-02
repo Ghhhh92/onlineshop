@@ -4,6 +4,7 @@ import com.onlineshop.entity.Product;
 import com.onlineshop.entity.PurchaseIntent;
 import com.onlineshop.enums.IntentStatus;
 import com.onlineshop.enums.ProductStatus;
+import com.onlineshop.mapper.CustomerMapper;
 import com.onlineshop.mapper.ProductMapper;
 import com.onlineshop.mapper.PurchaseIntentMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -23,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -54,12 +57,16 @@ class BuyerIntentTest {
     private PurchaseIntentMapper intentMapper;
 
     @Autowired
+    private CustomerMapper customerMapper;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void clean() {
         jdbcTemplate.update("DELETE FROM purchase_intent");
         jdbcTemplate.update("DELETE FROM product");
+        jdbcTemplate.update("DELETE FROM customer");
     }
 
     @Test
@@ -239,6 +246,46 @@ class BuyerIntentTest {
                 .andExpect(jsonPath("$.message").value("商品不存在"));
         submitTo(onSale.getId(), "张三", "13800000001")
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("客户登录后提交的意向记到客户名下，匿名提交的不关联客户（US-04、US-05）")
+    void intentLinkedToCustomer() throws Exception {
+        Product product = product(ProductStatus.ON_SALE);
+        MockHttpSession customer = registerCustomer();
+        Long customerId = customerMapper.selectByUsername("zhangsan").getId();
+
+        mockMvc.perform(post("/api/buyer/intent").session(customer).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":" + product.getId() + ",\"name\":\"张三\",\"phone\":\"13800000001\"}"))
+                .andExpect(status().isOk());
+        submitTo(product.getId(), "李四", "13800000002").andExpect(status().isOk());
+
+        assertThat(intentMapper.selectByProductInOrder(product.getId()))
+                .extracting(PurchaseIntent::getName, PurchaseIntent::getCustomerId)
+                .containsExactly(tuple("张三", customerId), tuple("李四", null));
+    }
+
+    @Test
+    @DisplayName("同一个客户在同一件商品还在排队时，换个手机号也不能重复提交")
+    void customerCannotQueueTwice() throws Exception {
+        Product product = product(ProductStatus.ON_SALE);
+        MockHttpSession customer = registerCustomer();
+
+        mockMvc.perform(post("/api/buyer/intent").session(customer).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":" + product.getId() + ",\"name\":\"张三\",\"phone\":\"13800000001\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/buyer/intent").session(customer).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":" + product.getId() + ",\"name\":\"张三\",\"phone\":\"13900000009\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("该账号已在排队中"));
+    }
+
+    private MockHttpSession registerCustomer() throws Exception {
+        return (MockHttpSession) mockMvc.perform(post("/api/customer/register").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"zhangsan\",\"password\":\"abc12345\",\"phone\":\"13800000001\","
+                                + "\"defaultLocation\":\"图书馆门口\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getRequest().getSession(false);
     }
 
     private Product product(ProductStatus status) {

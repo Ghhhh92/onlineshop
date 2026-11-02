@@ -1,10 +1,12 @@
 package com.onlineshop.controller;
 
+import com.onlineshop.auth.CustomerSession;
 import com.onlineshop.common.Result;
 import com.onlineshop.dto.IntentQueryResult;
 import com.onlineshop.dto.IntentSubmitResult;
 import com.onlineshop.dto.SubmitIntentRequest;
 import com.onlineshop.service.BuyerIntentService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 买家购买意向接口：买家免注册，不需要登录。
+ * 买家购买意向接口：买家免注册，不需要登录；客户登录后提交的意向关联到客户账号。
  *
  * @author 李帆
  * @date 2026-10-19
@@ -28,11 +30,13 @@ public class BuyerIntentController {
     private final BuyerIntentService buyerIntentService;
 
     /**
-     * 提交购买意向，返回唯一口令码和当前排队位次
+     * 提交购买意向，返回唯一口令码和当前排队位次。客户已登录时意向记到客户名下。
      */
     @PostMapping
-    public Result<IntentSubmitResult> submit(@Valid @RequestBody SubmitIntentRequest request) {
-        return Result.success(buyerIntentService.submit(request));
+    public Result<IntentSubmitResult> submit(@Valid @RequestBody SubmitIntentRequest request,
+                                             HttpServletRequest httpRequest) {
+        Long customerId = CustomerSession.currentCustomerId(httpRequest.getSession(false));
+        return Result.success(buyerIntentService.submit(request, customerId));
     }
 
     /**

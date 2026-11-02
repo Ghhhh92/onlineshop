@@ -52,6 +52,16 @@ public interface PurchaseIntentMapper extends BaseMapper<PurchaseIntent> {
     }
 
     /**
+     * 这个客户在该商品下是否已有仍在队列中的意向
+     */
+    default boolean existsActiveByCustomer(Long productId, Long customerId) {
+        return selectCount(Wrappers.<PurchaseIntent>lambdaQuery()
+                .eq(PurchaseIntent::getProductId, productId)
+                .eq(PurchaseIntent::getCustomerId, customerId)
+                .in(PurchaseIntent::getStatus, ACTIVE_STATUSES)) > 0;
+    }
+
+    /**
      * 按口令码查意向，不存在时返回 null
      */
     default PurchaseIntent selectByCode(String code) {
