@@ -4,6 +4,7 @@
 - 日期：2026-11-03
 - 执行方式：`cd backend && mvn clean test`（自动化，H2 内存库 + Flyway V1～V4 建表，无需 MySQL）
 - 汇总：**Tests run: 212, Failures: 0, Errors: 0, Skipped: 0**（BUILD SUCCESS）
+- 前端联调 E2E：`frontend/tests/challenge-a-e2e.cjs`（真实后端 H2、无 mock）**PASS**，覆盖 US-31/34/35/36/37
 
 ## 一、本轮新增 / 扩展用例（叶文锦）
 
@@ -55,6 +56,23 @@
 | `service.SellerServiceTest` | 3 | ✅ 通过 |
 | `statemachine.ProductStateMachineTest`（合法/非法流转） | 10 | ✅ 通过 |
 
-## 三、结论
+## 三、前端联调 E2E（真实后端，无 mock）
 
-挑战需求 A 的 8 条需求（US-31～US-38）后端自动化用例全部覆盖并全量通过，出口标准第 2 条「后端自动化用例全绿」满足。剩余待办见《挑战A测试用例清单》第 10 节（接口契约缺口、TC-STOCK-04 待交易接口接入、前端 E2E）。
+- 脚本：`frontend/tests/challenge-a-e2e.cjs`（Playwright + 真实 Spring Boot + H2 内存库 + Vite dev server）
+- 结果：**PASS**（`multi-product -> search -> multi-image detail -> register -> submit intent -> my orders; no page errors`）
+- 覆盖链路：
+
+| 步骤 | 需求 | 断言 |
+| --- | --- | --- |
+| 卖家登录 + 发布 2 件商品 | US-31 多商品 | 买家首页同时看到「E2E 台灯」「E2E 小说」 |
+| 关键词搜索「台灯」 | US-34 浏览搜索 | 只显示「E2E 台灯」，「E2E 小说」被过滤 |
+| 商品详情多图轮播 + 描述 | US-35 多图富媒体 | 轮播含 2 张不同图片、描述文本渲染 |
+| 客户注册（自动登录） | US-36 客户注册 | 注册后跳转「我的订单」，显示空状态 |
+| 登录态提交购买意向 | US-37 历史下单 | 生成 8 位口令码，排第 1 位 |
+| 「我的订单」查看 | US-37 历史下单 | 出现「E2E 台灯」与「排队中」状态 |
+
+## 四、结论
+
+挑战需求 A 的 8 条需求（US-31～US-38）后端自动化用例全部覆盖并全量通过（212 用例），前端买家侧关键链路联调 E2E 通过。出口标准第 2 条「后端自动化用例全绿」满足。
+
+剩余待办：接口契约补齐 `GET /api/customer/orders`（高佳豪）；缺陷 DEFECT-01「售罄商品仍可提交意向」待李帆修复（详见《挑战A测试用例清单》§11）。

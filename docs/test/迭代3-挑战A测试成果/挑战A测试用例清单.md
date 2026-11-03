@@ -48,7 +48,7 @@
 | TC-STOCK-01 | 发布必填库存，范围 1～99999 | 已登录 | 分别缺 stock、stock=0、100000、99999 | 前三个 400（库存不能为空/至少为 1/不能超过 99999），99999 成功 | ✅ `ProductPublishTest.stockRequiredAndInRange` |
 | TC-STOCK-02 | 交易成功扣减库存，不减成负数 | 商品 FROZEN、stock=2 | decreaseStock 三次 | 依次返回 1、0，第三次抛「库存不足」，库里为 0 | ✅ `ProductStockTest.decreaseStock` |
 | TC-STOCK-03 | 扣减到 0 时商品自动转售罄 | 商品 ON_SALE、stock=1 | decreaseStock 到 0 | 库存 0，状态自动流转为 SALES_OUT | ✅ `ProductStockTest.decreaseStockSellsOutWhenReachesZero` |
-| TC-STOCK-04 | 库存归零后不接新意向 | 商品 SALES_OUT | POST /api/buyer/intent | HTTP 400「商品已下架」 | ⚠️ 待补（依赖交易/冻结接口，迭代 4 接入 Controller 后补） |
+| TC-STOCK-04 | 库存归零后不接新意向 | 商品 SALES_OUT | POST /api/buyer/intent | HTTP 400「商品已售罄」 | 🔴 缺陷：`BuyerIntentService.submit()` 只拒 FROZEN/DELISTED，未拒 SALES_OUT，售罄商品仍可提交意向（见 §11） |
 | TC-STOCK-05 | 补货后直接恢复在售，无需重新发布 | 商品 SALES_OUT、stock=0 | PUT /stock {"stock":5} | HTTP 200，status 变 ON_SALE、stock=5 | ✅ `ProductStockTest.restockSalesOut` |
 | TC-STOCK-06 | 在售/交易中补货只改库存 | 商品 ON_SALE / FROZEN | PUT /stock {"stock":5} | stock 更新，状态不变 | ✅ `ProductStockTest.restockOnSale` / `restockFrozen` |
 | TC-STOCK-07 | 成交终态（已下架）不允许补货 | 商品 DELISTED | PUT /stock {"stock":5} | 抛「商品已下架，不能补货」，库存不变 | ✅ `ProductStockServiceTest.restockDelistedRejected` |
@@ -77,7 +77,7 @@
 | TC-IMG-06 | 最多 9 张，重复地址只存一次 | 已登录 | 10 张、2 张同地址 | 10 张 400「最多 9 张图片」；重复只存 1 张 | ✅ `ProductImageTest.imageCountAndDuplicates` |
 | TC-IMG-07 | 非上传接口返回的地址拒绝 | 已登录 | 外部 URL / 路径穿越 | HTTP 400「图片地址无效」 | ✅ `ProductImageTest.rejectsUnknownImageUrls` |
 | TC-IMG-08 | 富文本过滤脚本 | 已登录 | 描述含 `<script>`、onclick | 脚本被去掉，保留排版/图片 | ✅ `ProductPublishTest.richTextDescription` + `RichTextSanitizerTest` |
-| TC-IMG-09 | 详情页图片左右切换、富文本渲染 | 有图商品 | 前端打开详情页 | 轮播切换、`v-html` 正确渲染 | 🔧 手工/E2E（前端未就绪前先列，联调后补） |
+| TC-IMG-09 | 详情页图片左右切换、富文本渲染 | 有图商品 | 前端打开详情页 | 轮播切换、`v-html` 正确渲染 | ✅ E2E `challenge-a-e2e.cjs`（多图轮播 + 描述渲染） |
 
 ## 6. A.2-1 客户自由注册（US-36）
 
@@ -125,6 +125,13 @@
 2. ~~补 US-34 搜索接口测试~~ ✅ 已补：`ProductSearchTest`（名称/描述/叠加/无结果）。
 3. ~~补 US-37 我的订单测试~~ ✅ 已补：`CustomerOrderTest`（登录校验/本人可见/倒序/失败记录）。
 4. ~~补 US-33 状态流转集成断言~~ ✅ 已补：`ProductStockTest.decreaseStockSellsOutWhenReachesZero`、`restockSalesOut`。
-5. **接口契约缺口**：`GET /api/customer/orders`（US-37 我的订单）未写入《接口契约-挑战A》，需提醒高佳豪补契约，前端林炜博按此对接。
-6. **TC-STOCK-04**：库存归零后「不接新意向」的拒绝路径，等交易/冻结接口接入 Controller 后补用例。
-7. 后端就绪后跑 `mvn clean test` 全量回归（存量 + 本轮新增 35 个），回填本清单；前端骨架齐后补 Playwright E2E（多图轮播、搜索、注册登录、我的订单）。
+5. **接口契约缺口（待高佳豪）**：`GET /api/customer/orders`（US-37 我的订单）未写入《接口契约-挑战A》，需高佳豪补契约。
+6. **🔴 缺陷（待李帆修复）**：TC-STOCK-04 —— `BuyerIntentService.submit()` 未拒绝 SALES_OUT（售罄）商品，售罄商品仍能提交新意向。详见 §11。
+7. ✅ 后端全量回归：`mvn clean test` **212 用例全绿**（最新 main 复跑通过）。
+8. ✅ 前端联调 E2E：`frontend/tests/challenge-a-e2e.cjs`（真实后端无 mock，覆盖 US-31/34/35/36/37）通过。
+
+## 11. 缺陷登记
+
+| 编号 | 需求 | 现象 | 根因（位置） | 建议修复 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| DEFECT-01（=TC-STOCK-04） | US-33 库存自动下架 | 商品库存归零转「售罄」后，`POST /api/buyer/intent`（带该商品 productId）仍返回成功，可继续排队 | `BuyerIntentService.submit()` 只校验 `FROZEN`（「商品交易中」）与 `DELISTED`（「商品已下架」），漏了 `SALES_OUT` | 在 submit/lockProduct 增加 `SALES_OUT → 抛「商品已售罄」` 校验 | 待李帆修复 |
