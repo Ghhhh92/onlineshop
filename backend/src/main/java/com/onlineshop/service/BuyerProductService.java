@@ -26,10 +26,11 @@ public class BuyerProductService {
     private final ProductInfoAssembler productInfoAssembler;
 
     /**
-     * 在售和交易中的商品，按发布时间倒序分页；categoryId 不为空时只看这个类别的商品
+     * 在售和交易中的商品，按发布时间倒序分页；categoryId 不为空时只看这个类别的商品，
+     * keyword 不为空时按名称或描述模糊匹配
      */
-    public PageResult<ProductInfo> list(Long categoryId, int page, int size) {
-        Page<Product> result = productMapper.selectBuyerPage(Pages.of(page, size), categoryId);
+    public PageResult<ProductInfo> list(Long categoryId, String keyword, int page, int size) {
+        Page<Product> result = productMapper.selectBuyerPage(Pages.of(page, size), categoryId, keyword);
         return new PageResult<>(productInfoAssembler.toInfos(result.getRecords()), result.getTotal());
     }
 

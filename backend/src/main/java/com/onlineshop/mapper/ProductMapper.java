@@ -53,12 +53,15 @@ public interface ProductMapper extends BaseMapper<Product> {
     }
 
     /**
-     * 买家能看到的商品：在售和交易中（已冻结）的，可按类别筛选，按发布时间倒序分页
+     * 买家能看到的商品：在售和交易中（已冻结）的，可按类别筛选，也可按关键词搜索名称或描述，按发布时间倒序分页
      */
-    default Page<Product> selectBuyerPage(Page<Product> page, Long categoryId) {
+    default Page<Product> selectBuyerPage(Page<Product> page, Long categoryId, String keyword) {
+        String kw = keyword == null ? null : keyword.trim();
         return selectPage(page, Wrappers.<Product>lambdaQuery()
                 .in(Product::getStatus, ProductStatus.ON_SALE, ProductStatus.FROZEN)
                 .eq(categoryId != null, Product::getCategoryId, categoryId)
+                .and(kw != null && !kw.isEmpty(),
+                        w -> w.like(Product::getName, kw).or().like(Product::getDescription, kw))
                 .orderByDesc(Product::getCreateTime)
                 .orderByDesc(Product::getId));
     }

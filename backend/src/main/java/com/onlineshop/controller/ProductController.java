@@ -58,14 +58,16 @@ public class ProductController {
     }
 
     /**
-     * 买家浏览商品（US-01、US-31）：在售和交易中的商品，按发布时间倒序分页，可按类别筛选。
+     * 买家浏览商品（US-01、US-31、US-34）：在售和交易中的商品，按发布时间倒序分页，
+     * 可按类别筛选，也可用 keyword 按名称或描述搜索。
      * 交易中的商品 status 为 FROZEN，买家端据此显示「商品交易中」；一件都没有时 records 为空数组。
      */
     @GetMapping("/list")
     public Result<PageResult<ProductInfo>> list(@RequestParam(required = false) Long categoryId,
+                                                @RequestParam(required = false) String keyword,
                                                 @RequestParam(defaultValue = "1") int page,
                                                 @RequestParam(defaultValue = "10") int size) {
-        return Result.success(buyerProductService.list(categoryId, page, size));
+        return Result.success(buyerProductService.list(categoryId, keyword, page, size));
     }
 
     /**
