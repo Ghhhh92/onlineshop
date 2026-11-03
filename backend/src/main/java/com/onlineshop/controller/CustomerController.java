@@ -5,8 +5,11 @@ import com.onlineshop.auth.RequireCustomerLogin;
 import com.onlineshop.common.Result;
 import com.onlineshop.dto.CustomerInfo;
 import com.onlineshop.dto.LoginRequest;
+import com.onlineshop.dto.OrderInfo;
+import com.onlineshop.dto.PageResult;
 import com.onlineshop.dto.RegisterRequest;
 import com.onlineshop.entity.Customer;
+import com.onlineshop.service.CustomerOrderService;
 import com.onlineshop.service.CustomerService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final CustomerOrderService customerOrderService;
 
     /**
      * 客户注册（US-36）。注册成功后直接处于登录状态。
@@ -59,6 +63,18 @@ public class CustomerController {
     public Result<CustomerInfo> me(HttpSession session) {
         Customer customer = customerService.getById(CustomerSession.currentCustomerId(session));
         return Result.success(CustomerInfo.from(customer));
+    }
+
+    /**
+     * 我的订单（US-37）：当前客户的历史下单记录，按时间倒序分页。未登录返回 401。
+     */
+    @RequireCustomerLogin
+    @GetMapping("/orders")
+    public Result<PageResult<OrderInfo>> orders(@RequestParam(defaultValue = "1") int page,
+                                                @RequestParam(defaultValue = "10") int size,
+                                                HttpSession session) {
+        return Result.success(
+                customerOrderService.orders(CustomerSession.currentCustomerId(session), page, size));
     }
 
     /**
