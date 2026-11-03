@@ -22,3 +22,11 @@ export const getHistory = (page, size) =>
     params: { page, size },
     optionalEndpoint: true,
   });
+
+export const getProducts = (params) => http.get('/seller/product/list', { params });
+export const getCategories = () => http.get('/category/tree');
+export const saveCategory = (id, data) => id ? http.put(`/seller/category/${id}`, data) : http.post('/seller/category', data);
+export const deleteCategory = (id) => http.delete(`/seller/category/${id}`);
+export const updateStock = (id, stock) => http.put(`/seller/product/${id}/stock`, { stock });
+export const getCustomers = (params) => http.get('/seller/customer/list', { params });
+export const getCustomerOrders = (id, params) => http.get(`/seller/customer/${id}/orders`, { params });

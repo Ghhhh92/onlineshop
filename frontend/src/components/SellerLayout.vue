@@ -13,8 +13,7 @@
       </div>
     </header>
     <nav class="seller-nav" aria-label="卖家导航">
-      <router-link to="/seller/admin">后台首页</router-link
-      ><router-link to="/seller/publish">发布商品</router-link
+      <router-link to="/seller/products">商品与库存</router-link><router-link to="/seller/categories">类别管理</router-link><router-link to="/seller/customers">客户列表</router-link><router-link to="/seller/publish">发布商品</router-link
       ><router-link to="/seller/history">历史商品</router-link
       ><router-link to="/">买家首页 ↗</router-link>
     </nav>

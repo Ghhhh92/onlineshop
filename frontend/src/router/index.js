@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useSellerStore } from '@/stores/seller'
 
 const routes = [
+  ...['Products', 'Categories', 'Customers'].map(view => ({ path: `/seller/${view.toLowerCase()}`, name: `Seller${view}`, component: () => import(`../views/seller/${view}.vue`), meta: { requiresAuth: true } })),
   // 买家端
   { path: '/', name: 'Home', component: () => import('@/views/buyer/Home.vue') },
   { path: '/buy', name: 'BuyForm', component: () => import('@/views/buyer/BuyForm.vue') },
@@ -13,7 +14,7 @@ const routes = [
   {
     path: '/seller/admin',
     name: 'SellerAdmin',
-    component: () => import('@/views/seller/Admin.vue'),
+    component: () => import('@/views/seller/Products.vue'),
     meta: { requiresAuth: true },
   },
   {
