@@ -1,25 +1,53 @@
 <template>
-  <div class="buy-container">
-    <el-card>
-      <template #header><h2 style="margin: 0">提交购买意向</h2></template>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" style="max-width: 500px">
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="form.name" placeholder="请填写姓名" />
-        </el-form-item>
-        <el-form-item label="电话" prop="phone">
-          <el-input v-model="form.phone" placeholder="请填写 11 位手机号" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="loading" @click="submit">提交</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-  </div>
+  <BuyerLayout>
+    <div class="buy-container">
+      <section class="buy-heading">
+        <h1>提交购买意向</h1>
+        <p class="buyer-muted">买家免注册，填写姓名与联系电话即可进入排队，系统会返回唯一口令码。</p>
+      </section>
+
+      <el-card>
+        <el-form
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          label-position="top"
+          class="buy-form"
+          @submit.prevent
+        >
+          <el-form-item label="姓名" prop="name">
+            <el-input
+              v-model="form.name"
+              size="large"
+              placeholder="请填写真实姓名"
+              clearable
+              maxlength="30"
+            />
+          </el-form-item>
+          <el-form-item label="联系电话" prop="phone">
+            <el-input
+              v-model="form.phone"
+              size="large"
+              placeholder="请填写 11 位手机号"
+              clearable
+              maxlength="11"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" class="submit-btn" :loading="loading" @click="submit">
+              提交购买意向
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+    </div>
+  </BuyerLayout>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import BuyerLayout from '@/components/BuyerLayout.vue'
 import { submitIntent } from '@/api/buyer'
 
 const router = useRouter()
@@ -52,8 +80,25 @@ async function submit() {
 
 <style scoped>
 .buy-container {
-  max-width: 600px;
-  margin: 60px auto;
-  padding: 0 20px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.buy-heading {
+  text-align: center;
+  padding: 10px 0 26px;
+}
+
+.buy-heading h1 {
+  margin: 0 0 10px;
+  font-size: 30px;
+}
+
+.buy-form {
+  padding: 8px 6px;
+}
+
+.submit-btn {
+  width: 100%;
 }
 </style>
