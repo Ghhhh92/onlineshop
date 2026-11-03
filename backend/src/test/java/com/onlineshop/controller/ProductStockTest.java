@@ -103,6 +103,18 @@ class ProductStockTest {
     }
 
     @Test
+    @DisplayName("售罄商品不再接收新的购买意向（US-33）")
+    void salesOutRejectsNewIntent() throws Exception {
+        Product product = product(ProductStatus.SALES_OUT, 0);
+
+        mockMvc.perform(post("/api/buyer/intent")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productId\":" + product.getId() + ",\"name\":\"张三\",\"phone\":\"13800000000\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("商品已售罄"));
+    }
+
+    @Test
     @DisplayName("修改库存需要登录")
     void updateStockRequiresLogin() throws Exception {
         Product product = product(ProductStatus.ON_SALE, 1);

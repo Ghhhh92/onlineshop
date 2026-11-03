@@ -49,6 +49,9 @@ public class BuyerIntentService {
         if (product.getStatus() == ProductStatus.FROZEN) {
             throw new BizException("商品交易中");
         }
+        if (product.getStatus() == ProductStatus.SALES_OUT) {
+            throw new BizException("商品已售罄");
+        }
         String phone = request.getPhone().trim();
         if (intentMapper.existsActiveByPhone(product.getId(), phone)) {
             throw new BizException("该手机号已在排队中");
