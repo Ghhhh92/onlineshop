@@ -82,6 +82,27 @@ class ProductStockTest {
     }
 
     @Test
+    @DisplayName("在售商品库存减到 0：自动转为售罄（US-33）")
+    void decreaseStockSellsOutWhenReachesZero() {
+        Product product = product(ProductStatus.ON_SALE, 1);
+
+        assertThat(productService.decreaseStock(product.getId())).isZero();
+        assertThat(productMapper.selectById(product.getId()).getStatus()).isEqualTo(ProductStatus.SALES_OUT);
+    }
+
+    @Test
+    @DisplayName("售罄商品补货：直接恢复在售，无需重新发布（US-33）")
+    void restockSalesOut() throws Exception {
+        Product product = product(ProductStatus.SALES_OUT, 0);
+
+        updateStock(product.getId(), "{\"stock\":5}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stock").value(5))
+                .andExpect(jsonPath("$.data.status").value("ON_SALE"));
+        assertThat(productMapper.selectById(product.getId()).getStatus()).isEqualTo(ProductStatus.ON_SALE);
+    }
+
+    @Test
     @DisplayName("修改库存需要登录")
     void updateStockRequiresLogin() throws Exception {
         Product product = product(ProductStatus.ON_SALE, 1);
