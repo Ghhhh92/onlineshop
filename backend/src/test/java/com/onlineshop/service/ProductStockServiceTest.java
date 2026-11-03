@@ -41,13 +41,13 @@ class ProductStockServiceTest {
     private ProductService productService;
 
     @Test
-    @DisplayName("已下架（库存为 0）的商品补货：经状态机恢复在售，再保存新库存")
-    void restockDelisted() {
-        Product product = product(ProductStatus.DELISTED, 0);
+    @DisplayName("售罄（库存为 0）的商品补货：经状态机恢复在售，再保存新库存")
+    void restockSalesOut() {
+        Product product = product(ProductStatus.SALES_OUT, 0);
         doAnswer(invocation -> {
             product.setStatus(ProductStatus.ON_SALE);
             return null;
-        }).when(productStateMachine).transit(product, ProductStatus.ON_SALE);
+        }).when(productStateMachine).restock(product);
 
         productService.updateStock(1L, 5);
 
@@ -57,13 +57,13 @@ class ProductStockServiceTest {
     }
 
     @Test
-    @DisplayName("状态机不允许恢复在售时，库存不改")
-    void restockRejectedByStateMachine() {
+    @DisplayName("已下架（成交终态）的商品不允许补货，库存不改")
+    void restockDelistedRejected() {
         Product product = product(ProductStatus.DELISTED, 0);
-        doThrow(new BizException("非法状态流转：已下架 → 在售"))
-                .when(productStateMachine).transit(product, ProductStatus.ON_SALE);
 
-        assertThatThrownBy(() -> productService.updateStock(1L, 5)).isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> productService.updateStock(1L, 5))
+                .isInstanceOf(BizException.class)
+                .hasMessage("商品已下架，不能补货");
 
         assertThat(product.getStock()).isZero();
         verify(productMapper, never()).updateById(any(Product.class));

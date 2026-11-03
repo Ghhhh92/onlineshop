@@ -61,6 +61,22 @@ class ProductStateMachineTest {
             stateMachine.unfreeze(p);
             assertThat(p.getStatus()).isEqualTo(ProductStatus.ON_SALE);
         }
+
+        @Test
+        @DisplayName("在售 → 售罄（库存归零）")
+        void onSaleToSalesOut() {
+            Product p = productWith(ProductStatus.ON_SALE);
+            stateMachine.sellOut(p);
+            assertThat(p.getStatus()).isEqualTo(ProductStatus.SALES_OUT);
+        }
+
+        @Test
+        @DisplayName("售罄 → 在售（卖家补货）")
+        void salesOutToOnSale() {
+            Product p = productWith(ProductStatus.SALES_OUT);
+            stateMachine.restock(p);
+            assertThat(p.getStatus()).isEqualTo(ProductStatus.ON_SALE);
+        }
     }
 
     @Nested
@@ -91,6 +107,25 @@ class ProductStateMachineTest {
         void nullProduct() {
             assertThatThrownBy(() -> stateMachine.transit(null, ProductStatus.FROZEN))
                     .isInstanceOf(BizException.class);
+        }
+
+        @Test
+        @DisplayName("售罄商品不能直接进入交易")
+        void salesOutCannotFreeze() {
+            Product p = productWith(ProductStatus.SALES_OUT);
+            assertThatThrownBy(() -> stateMachine.freeze(p))
+                    .isInstanceOf(BizException.class)
+                    .hasMessageContaining("非法状态流转");
+            assertThat(p.getStatus()).isEqualTo(ProductStatus.SALES_OUT);
+        }
+
+        @Test
+        @DisplayName("已下架商品不能补货恢复")
+        void delistedCannotRestock() {
+            Product p = productWith(ProductStatus.DELISTED);
+            assertThatThrownBy(() -> stateMachine.restock(p))
+                    .isInstanceOf(BizException.class);
+            assertThat(p.getStatus()).isEqualTo(ProductStatus.DELISTED);
         }
     }
 }

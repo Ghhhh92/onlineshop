@@ -75,7 +75,7 @@ public class ProductService {
     }
 
     /**
-     * 库存减 1（交易成功时调用，US-33），返回剩下的库存；剩 0 时调用方再把商品转为已下架。
+     * 库存减 1（交易成功时调用，US-33），返回剩下的库存；库存归零时经状态机转为售罄。
      * 库存已经是 0 时提示库存不足。
      */
     @Transactional
@@ -84,11 +84,16 @@ public class ProductService {
             getByIdOrThrow(id);
             throw new BizException("库存不足");
         }
-        return productMapper.selectById(id).getStock();
+        Product product = productMapper.selectById(id);
+        if (product.getStatus() == ProductStatus.ON_SALE && product.getStock() != null && product.getStock() == 0) {
+            productStateMachine.sellOut(product);
+            productMapper.updateById(product);
+        }
+        return product.getStock();
     }
 
     /**
-     * 卖家修改库存（补货，US-33）。商品因库存为 0 已下架时，经状态机恢复为在售，不用重新发布；
+     * 卖家修改库存（补货，US-33）。商品已售罄时经状态机恢复为在售，不用重新发布；
      * 在售、交易中的商品只改库存，状态不变。
      */
     @Transactional
@@ -98,7 +103,10 @@ public class ProductService {
             throw new BizException(404, "商品不存在");
         }
         if (product.getStatus() == ProductStatus.DELISTED) {
-            productStateMachine.transit(product, ProductStatus.ON_SALE);
+            throw new BizException("商品已下架，不能补货");
+        }
+        if (product.getStatus() == ProductStatus.SALES_OUT) {
+            productStateMachine.restock(product);
         }
         product.setStock(stock);
         productMapper.updateById(product);

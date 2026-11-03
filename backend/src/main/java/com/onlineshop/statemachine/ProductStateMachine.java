@@ -6,14 +6,17 @@ import com.onlineshop.enums.ProductStatus;
 import org.springframework.stereotype.Component;
 
 /**
- * 商品状态机
+ * 商品状态机（挑战需求 A 起为四态）
  * 集中管理商品状态流转规则，任何状态变更都必须经过本组件校验，
  * 禁止绕过状态机直接 setStatus / update。
  *
  * 合法流转：
- *   在售 → 已冻结（队首意向进入交易）
+ *   在售 → 已冻结（卖家发起进入交易）
+ *   在售 → 售罄（库存扣减到 0）
+ *   售罄 → 在售（卖家补货，库存回到大于 0）
  *   已冻结 → 已下架（交易成功）
  *   已冻结 → 在售（交易失败 / 手动解冻回退）
+ *   已下架：成交终态，不可再流转
  *
  * @author 高佳豪
  * @date 2026-10-08
@@ -57,5 +60,19 @@ public class ProductStateMachine {
      */
     public void delist(Product product) {
         transit(product, ProductStatus.DELISTED);
+    }
+
+    /**
+     * 售罄：在售 → 售罄（库存扣减到 0 时调用）
+     */
+    public void sellOut(Product product) {
+        transit(product, ProductStatus.SALES_OUT);
+    }
+
+    /**
+     * 补货恢复：售罄 → 在售（卖家把库存调回大于 0 时调用）
+     */
+    public void restock(Product product) {
+        transit(product, ProductStatus.ON_SALE);
     }
 }
