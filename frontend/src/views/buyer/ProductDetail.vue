@@ -10,7 +10,7 @@
       <el-card v-else class="detail-card">
         <div class="detail-grid">
           <div class="gallery">
-            <el-carousel v-if="product.images && product.images.length" :interval="5000" height="360px">
+            <el-carousel v-if="product.images && product.images.length" :autoplay="false" arrow="always" height="360px">
               <el-carousel-item v-for="(img, i) in product.images" :key="i">
                 <img :src="img" :alt="product.name" class="gallery-img" />
               </el-carousel-item>
@@ -39,7 +39,7 @@
 
         <div class="desc">
           <h3>商品描述</h3>
-          <div v-if="product.description" class="rich-text" v-html="product.description" />
+          <RichDescription v-if="product.description" :value="product.description" />
           <p v-else class="buyer-muted">暂无描述</p>
         </div>
       </el-card>
@@ -48,6 +48,8 @@
 </template>
 
 <script setup>
+import RichDescription from '@/components/RichDescription.vue'
+
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BuyerLayout from '@/components/BuyerLayout.vue'

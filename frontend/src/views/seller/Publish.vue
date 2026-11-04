@@ -24,18 +24,11 @@
               placeholder="例如：九成新台灯"
           /></el-form-item>
           <el-form-item label="商品描述（选填）" prop="description"
-            ><el-input
-              v-model="form.description"
-              type="textarea"
-              :rows="5"
-              maxlength="2000"
-              show-word-limit
-              placeholder="介绍成色、规格及交易方式"
-          /></el-form-item>
+            ><RichEditor v-model="form.description" @busy="descriptionUploading = $event" /></el-form-item>
           <el-form-item label="商品图片（最多 9 张，第一张为封面）">
             <input type="file" accept="image/jpeg,image/png" multiple :disabled="uploading || loading" aria-label="上传商品图片" @change="upload" />
             <p>JPG / PNG，单张不超过 5MB。按上传顺序展示。</p>
-            <div v-for="(url,index) in images" :key="url" style="display:flex;align-items:center;gap:8px;margin:8px"><el-image :src="url" style="width:72px;height:72px" fit="cover"/><el-button :disabled="index===0" @click="moveImage(index)">前移</el-button><el-button :disabled="loading || uploading" @click="images.splice(index,1)">移除</el-button></div>
+            <div v-for="(url,index) in images" :key="url" style="display:flex;align-items:center;gap:8px;margin:8px"><el-image :src="url" style="width:72px;height:72px" fit="cover"/><el-button :disabled="index===0" @click="moveImage(index)">前移</el-button><el-button :disabled="loading || uploading || descriptionUploading" @click="images.splice(index,1)">移除</el-button></div>
           </el-form-item>
           <el-form-item label="售价（元）" prop="price"
             ><el-input-number
@@ -52,7 +45,7 @@
             type="primary"
             native-type="submit"
             :loading="loading"
-            :disabled="loading || uploading"
+            :disabled="loading || uploading || descriptionUploading"
             >确认发布</el-button
           ><el-button @click="$router.push('/seller/admin')"
             >返回后台</el-button
@@ -72,9 +65,7 @@
         <p class="price">
           ￥{{ form.price ? Number(form.price).toFixed(2) : "0.00" }}
         </p>
-        <p class="description">
-          {{ form.description || "商品描述将显示在这里" }}
-        </p>
+        <RichDescription :value="form.description || '商品描述将显示在这里'" />
         <p class="muted">
           发布后不支持修改，请核对名称、图片、库存及售价。
         </p>
@@ -88,6 +79,8 @@ import { reactive, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import SellerLayout from "@/components/SellerLayout.vue";
+import RichEditor from "@/components/RichEditor.vue";
+import RichDescription from "@/components/RichDescription.vue";
 import http from "@/utils/http";
 import { publishProduct } from "@/api/product";
 import { getCategories } from "@/api/sellerWorkspace";
@@ -95,7 +88,7 @@ const router = useRouter(),
   formRef = ref(),
   loading = ref(false),
   categories = ref([]);
-const images = ref([]), uploading = ref(false);
+const images = ref([]), uploading = ref(false), descriptionUploading = ref(false);
 const form = reactive({
   name: "",
   description: "",
@@ -139,7 +132,7 @@ async function upload(event) {
 }
 async function submit() {
   if (
-    loading.value || uploading.value ||
+    loading.value || uploading.value || descriptionUploading.value ||
     !(await formRef.value.validate().catch(() => false))
   )
     return;
