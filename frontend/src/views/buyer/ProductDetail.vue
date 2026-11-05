@@ -108,6 +108,11 @@ function goBuy() {
   justify-content: center;
 }
 
+.gallery > .el-carousel {
+  width: 100%;
+  min-width: 0;
+}
+
 .gallery-img {
   width: 100%;
   height: 100%;
