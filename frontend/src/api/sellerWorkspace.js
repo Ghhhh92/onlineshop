@@ -30,3 +30,12 @@ export const deleteCategory = (id) => http.delete(`/seller/category/${id}`);
 export const updateStock = (id, stock) => http.put(`/seller/product/${id}/stock`, { stock });
 export const getCustomers = (params) => http.get('/seller/customer/list', { params });
 export const getCustomerOrders = (id, params) => http.get(`/seller/customer/${id}/orders`, { params });
+
+// 挑战 B 订单管理
+export const getSellerOrders = (params) => http.get('/seller/order/list', { params });
+export const getSellerOrder = (id) => http.get(`/seller/order/${id}`);
+export const confirmOrder = (id) => http.post(`/seller/order/${id}/confirm`);
+export const prepareOrder = (id) => http.post(`/seller/order/${id}/prepare`);
+export const shipOrder = (id) => http.post(`/seller/order/${id}/ship`);
+export const completeOrder = (id) => http.post(`/seller/order/${id}/complete`);
+export const cancelSellerOrder = (id) => http.post(`/seller/order/${id}/cancel`);

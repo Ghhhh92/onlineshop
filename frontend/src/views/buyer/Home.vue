@@ -4,7 +4,7 @@
       <section class="hero">
         <p class="hero-kicker">ONLINE SHOP</p>
         <h1>发现值得入手的好物</h1>
-        <p class="hero-sub">浏览在售商品，按类别或关键词查找，提交购买意向即可排队。</p>
+        <p class="hero-sub">浏览在售商品，收藏或加入购物车，登录后可从购物车多选下单。</p>
       </section>
 
       <div class="filter-bar">
@@ -56,10 +56,14 @@
             <h3>{{ item.name }}</h3>
             <p class="price">￥{{ item.price }}</p>
             <div class="meta-row">
-              <el-tag :type="item.status === 'FROZEN' ? 'warning' : 'success'" effect="light" size="small">
-                {{ item.statusText }}
+              <el-tag :type="item.status === 'ON_SALE' ? 'success' : 'info'" effect="light" size="small">
+                {{ item.statusText || item.status }}
               </el-tag>
               <span v-if="item.status === 'ON_SALE'" class="stock">库存 {{ item.stock }}</span>
+            </div>
+            <div class="meta-actions">
+              <el-button size="small" :disabled="item.status !== 'ON_SALE'" @click.stop="quickAddCart(item)">加入购物车</el-button>
+              <el-button size="small" :disabled="item.status !== 'ON_SALE'" @click.stop="quickFavorite(item)">收藏</el-button>
             </div>
           </div>
         </el-card>
@@ -81,10 +85,15 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import BuyerLayout from '@/components/BuyerLayout.vue'
 import { listProducts, getCategoryTree } from '@/api/product'
+import { addCart, addFavorite } from '@/api/customer'
+import { useCustomerStore } from '@/stores/customer'
+import { ensureCustomerLogin } from '@/utils/ensureCustomer'
 
 const router = useRouter()
+const customer = useCustomerStore()
 const products = ref([])
 const total = ref(0)
 const loading = ref(false)
@@ -131,6 +140,22 @@ function changePage(page) {
 
 function goDetail(id) {
   router.push(`/product/${id}`)
+}
+
+async function quickAddCart(item) {
+  if (!(await ensureCustomerLogin(customer, router))) return
+  try {
+    await addCart(item.id, 1)
+    ElMessage.success('已加入购物车')
+  } catch {}
+}
+
+async function quickFavorite(item) {
+  if (!(await ensureCustomerLogin(customer, router))) return
+  try {
+    await addFavorite(item.id)
+    ElMessage.success('已收藏')
+  } catch {}
 }
 
 onMounted(async () => {
@@ -249,6 +274,16 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.meta-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.meta-actions .el-button {
+  flex: 1;
 }
 
 .stock {
