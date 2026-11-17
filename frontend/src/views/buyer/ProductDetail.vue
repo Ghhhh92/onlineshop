@@ -86,7 +86,7 @@ const quantity = ref(1)
 const cartLoading = ref(false)
 const favoriteLoading = ref(false)
 
-const available = computed(() => product.value?.status === 'ON_SALE')
+const available = computed(() => product.value?.status === 'ON_SALE' && Number(product.value?.stock || 0) > 0)
 
 onMounted(async () => {
   loading.value = true

@@ -62,8 +62,8 @@
               <span v-if="item.status === 'ON_SALE'" class="stock">库存 {{ item.stock }}</span>
             </div>
             <div class="meta-actions">
-              <el-button size="small" :disabled="item.status !== 'ON_SALE'" @click.stop="quickAddCart(item)">加入购物车</el-button>
-              <el-button size="small" :disabled="item.status !== 'ON_SALE'" @click.stop="quickFavorite(item)">收藏</el-button>
+              <el-button size="small" :disabled="!buyable(item)" @click.stop="quickAddCart(item)">加入购物车</el-button>
+              <el-button size="small" :disabled="!buyable(item)" @click.stop="quickFavorite(item)">收藏</el-button>
             </div>
           </div>
         </el-card>
@@ -136,6 +136,10 @@ function search() {
 function changePage(page) {
   filters.page = page
   load()
+}
+
+function buyable(item) {
+  return item.status === 'ON_SALE' && Number(item.stock || 0) > 0
 }
 
 function goDetail(id) {

@@ -18,6 +18,15 @@
       <el-alert v-if="error" :title="error" type="error" :closable="false" />
       <el-table v-else :data="rows" v-loading="loading" empty-text="暂无订单">
         <el-table-column prop="orderNo" label="订单号" min-width="180" />
+        <el-table-column label="客户" min-width="160">
+          <template #default="{ row }">
+            <template v-if="row.customerUsername">
+              <div>{{ row.customerUsername }}</div>
+              <div class="customer-phone">{{ row.customerPhone }}</div>
+            </template>
+            <span v-else>—</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <el-tag :type="orderStatusType(row.status)" effect="light">{{ orderStatusText(row.status) }}</el-tag>
@@ -50,6 +59,9 @@
 
     <el-dialog v-model="detailVisible" title="订单详情" width="min(760px, 94vw)">
       <div v-loading="detailLoading">
+        <p v-if="detail?.customerUsername" class="detail-no">
+          客户：{{ detail.customerUsername }} ｜ {{ detail.customerPhone }}
+        </p>
         <p v-if="detail" class="detail-no">
           订单号：{{ detail.orderNo }} ｜ 状态：{{ orderStatusText(detail.status) }}
         </p>
@@ -158,6 +170,10 @@ onMounted(load)
 </script>
 
 <style scoped>
+.customer-phone {
+  color: #71817c;
+  font-size: 12px;
+}
 .detail-no {
   margin: 0 0 14px;
   color: #61736e;
