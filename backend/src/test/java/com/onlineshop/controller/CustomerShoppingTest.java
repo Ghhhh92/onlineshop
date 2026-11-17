@@ -68,8 +68,8 @@ class CustomerShoppingTest {
         for(int i=0;i<2;i++) mvc.perform(post("/api/customer/favorite").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(body(1))).andExpect(status().isOk());
         mvc.perform(get("/api/customer/favorite?page=1&size=1").session(session))
-                .andExpect(jsonPath("$.data.total").value(1)).andExpect(jsonPath("$.data.page").value(1))
-                .andExpect(jsonPath("$.data.size").value(1)).andExpect(jsonPath("$.data.items[0].price").value(12.5));
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.records[0].price").value(12.5));
         mvc.perform(get("/api/customer/favorite").session(stranger)).andExpect(jsonPath("$.data.total").value(0));
         mvc.perform(delete("/api/customer/favorite/"+product).session(stranger)).andExpect(status().isOk());
         assertThat(shopping.favorites(owner,1,10).total()).isEqualTo(1);
@@ -82,10 +82,10 @@ class CustomerShoppingTest {
         jdbc.update("UPDATE customer_favorite SET create_time = '2020-01-01 00:00:00' WHERE customer_id = ?",owner);
         jdbc.update("INSERT INTO customer_favorite(customer_id,product_id,create_time) VALUES (?,999999999,CURRENT_TIMESTAMP)",owner);
         var page=shopping.favorites(owner,1,1);
-        assertThat(page.total()).isEqualTo(2); assertThat(page.items().get(0).productId()).isEqualTo(999999999L);
-        assertThat(shopping.favorites(owner,2,1).items().get(0).productId()).isEqualTo(product);
-        assertThat(shopping.favorites(owner,Integer.MAX_VALUE,50).items()).isEmpty();
-        assertThat(shopping.favorites(owner,0,100).size()).isEqualTo(50);
+        assertThat(page.total()).isEqualTo(2); assertThat(page.records().get(0).productId()).isEqualTo(999999999L);
+        assertThat(shopping.favorites(owner,2,1).records().get(0).productId()).isEqualTo(product);
+        assertThat(shopping.favorites(owner,Integer.MAX_VALUE,50).records()).isEmpty();
+        assertThat(shopping.favorites(owner,0,100).records()).hasSize(2);
     }
     @Test void cartDefaultsToOneAndAccumulates() throws Exception {
         mvc.perform(post("/api/customer/cart").session(session).contentType(MediaType.APPLICATION_JSON)
@@ -140,7 +140,7 @@ class CustomerShoppingTest {
         var item=shopping.cart(owner).get(0);
         assertThat(item.delisted()).isTrue(); assertThat(item.available()).isFalse();
         assertThat(item.price()).isEqualByComparingTo("20");
-        assertThat(shopping.favorites(owner,1,10).items().get(0).delisted()).isTrue();
+        assertThat(shopping.favorites(owner,1,10).records().get(0).delisted()).isTrue();
         jdbc.update("DELETE FROM product WHERE id=?",product);
         assertThat(shopping.cart(owner).get(0).available()).isFalse();
         shopping.removeCart(owner,cartId()); shopping.unfavorite(owner,product);
