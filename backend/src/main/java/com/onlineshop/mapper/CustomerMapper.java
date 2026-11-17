@@ -23,6 +23,14 @@ public interface CustomerMapper extends BaseMapper<Customer> {
     }
 
     /**
+     * 按 id 查客户并对这一行加锁（SELECT … FOR UPDATE），不存在时返回 null。
+     * 购物车、收藏的写操作先锁客户行，同一客户的并发改动按顺序执行。
+     */
+    default Customer selectByIdForUpdate(Long id) {
+        return selectOne(Wrappers.<Customer>lambdaQuery().eq(Customer::getId, id).last("FOR UPDATE"));
+    }
+
+    /**
      * 全部客户，按注册时间倒序分页
      */
     default Page<Customer> selectLatestPage(Page<Customer> page) {

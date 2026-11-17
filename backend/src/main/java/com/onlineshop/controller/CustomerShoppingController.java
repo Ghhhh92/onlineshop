@@ -3,12 +3,26 @@ package com.onlineshop.controller;
 import com.onlineshop.auth.CustomerSession;
 import com.onlineshop.auth.RequireCustomerLogin;
 import com.onlineshop.common.Result;
-import com.onlineshop.dto.*;
+import com.onlineshop.dto.AddCartRequest;
+import com.onlineshop.dto.CartSelectionRequest;
+import com.onlineshop.dto.FavoriteRequest;
+import com.onlineshop.dto.OrderDetail;
+import com.onlineshop.dto.PageResult;
+import com.onlineshop.dto.ShoppingItem;
+import com.onlineshop.dto.UpdateCartRequest;
 import com.onlineshop.service.CustomerShoppingService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /** 挑战 B 收藏与购物车管理；客户身份只从会话获取。 */
@@ -20,7 +34,7 @@ public class CustomerShoppingController {
     private final CustomerShoppingService shopping;
 
     @GetMapping("/favorite")
-    public Result<FavoritePage> favorites(@RequestParam(defaultValue = "1") int page,
+    public Result<PageResult<ShoppingItem>> favorites(@RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size, HttpSession session) {
         return Result.success(shopping.favorites(CustomerSession.currentCustomerId(session), page, size));
     }
