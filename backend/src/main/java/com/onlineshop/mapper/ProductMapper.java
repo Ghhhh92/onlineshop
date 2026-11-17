@@ -53,6 +53,17 @@ public interface ProductMapper extends BaseMapper<Product> {
     }
 
     /**
+     * 库存不少于 quantity 时一次扣掉 quantity，返回是否扣成功（挑战需求 B 订单交易完成时用）。
+     * 检查和扣减在同一条 UPDATE 里完成，多笔订单同时完成也不会把库存扣成负数。
+     */
+    default boolean decreaseStock(Long id, int quantity) {
+        return update(null, Wrappers.<Product>lambdaUpdate()
+                .setSql("stock = stock - {0}", quantity)
+                .eq(Product::getId, id)
+                .ge(Product::getStock, quantity)) > 0;
+    }
+
+    /**
      * 买家能看到的商品：在售和交易中（已冻结）的，可按类别筛选，也可按关键词搜索名称或描述，按发布时间倒序分页
      */
     default Page<Product> selectBuyerPage(Page<Product> page, Long categoryId, String keyword) {
