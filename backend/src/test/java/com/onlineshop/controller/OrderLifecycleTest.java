@@ -241,6 +241,26 @@ class OrderLifecycleTest {
     }
 
     @Test
+    @DisplayName("卖家订单带下单客户信息，客户自己查看时不带")
+    void sellerOrderCarriesCustomerInfo() throws Exception {
+        Product product = product("台灯", "35.00", 5);
+        long orderId = place(product, 1);
+
+        mockMvc.perform(get("/api/seller/order/" + orderId).session(seller))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.customerUsername").value("zhangsan"))
+                .andExpect(jsonPath("$.data.customerPhone").value("13800000001"));
+
+        mockMvc.perform(get("/api/seller/order/list").session(seller))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.records[0].customerUsername").value("zhangsan"));
+
+        mockMvc.perform(get("/api/customer/order/" + orderId).session(customer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.customerUsername").isEmpty());
+    }
+
+    @Test
     @DisplayName("未登录：客户下单、卖家推进订单都返回 401")
     void requireLogin() throws Exception {
         mockMvc.perform(post("/api/customer/order")
