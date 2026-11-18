@@ -6,11 +6,13 @@ import com.onlineshop.common.Pages;
 import com.onlineshop.dto.OrderDetail;
 import com.onlineshop.dto.OrderLine;
 import com.onlineshop.dto.PageResult;
+import com.onlineshop.entity.Customer;
 import com.onlineshop.entity.CustomerOrder;
 import com.onlineshop.entity.CustomerOrderItem;
 import com.onlineshop.entity.Product;
 import com.onlineshop.enums.OrderStatus;
 import com.onlineshop.enums.ProductStatus;
+import com.onlineshop.mapper.CustomerMapper;
 import com.onlineshop.mapper.CustomerOrderItemMapper;
 import com.onlineshop.mapper.CustomerOrderMapper;
 import com.onlineshop.mapper.ProductMapper;
@@ -52,6 +54,7 @@ public class OrderService {
 
     private final CustomerOrderMapper orderMapper;
     private final CustomerOrderItemMapper itemMapper;
+    private final CustomerMapper customerMapper;
     private final ProductMapper productMapper;
     private final OrderStateMachine orderStateMachine;
     private final ProductStateMachine productStateMachine;
@@ -245,14 +248,14 @@ public class OrderService {
      * 客户自己的订单，按下单时间倒序分页
      */
     public PageResult<OrderDetail> customerOrders(Long customerId, int page, int size, OrderStatus status) {
-        return toPageResult(orderMapper.selectCustomerPage(Pages.of(page, size), customerId, status));
+        return toPageResult(orderMapper.selectCustomerPage(Pages.of(page, size), customerId, status), false);
     }
 
     /**
-     * 卖家看到的全部订单（单卖家），按下单时间倒序分页
+     * 卖家看到的全部订单（单卖家），按下单时间倒序分页，带下单客户信息
      */
     public PageResult<OrderDetail> sellerOrders(int page, int size, OrderStatus status) {
-        return toPageResult(orderMapper.selectSellerPage(Pages.of(page, size), status));
+        return toPageResult(orderMapper.selectSellerPage(Pages.of(page, size), status), true);
     }
 
     /**
@@ -267,14 +270,17 @@ public class OrderService {
     }
 
     /**
-     * 卖家查看订单详情
+     * 卖家查看订单详情，带下单客户信息
      */
     public OrderDetail sellerOrderDetail(Long orderId) {
         CustomerOrder order = orderMapper.selectById(orderId);
         if (order == null) {
             throw new BizException(404, "订单不存在");
         }
-        return detailOf(order);
+        Customer customer = customerMapper.selectById(order.getCustomerId());
+        return OrderDetail.of(order, itemMapper.selectByOrderId(order.getId()),
+                customer == null ? null : customer.getUsername(),
+                customer == null ? null : customer.getPhone());
     }
 
     // ===== 内部方法 =====
@@ -292,17 +298,36 @@ public class OrderService {
     }
 
     /**
-     * 一页订单的明细一次查出来再按订单分组，避免逐条查询
+     * 一页订单的明细一次查出来再按订单分组，避免逐条查询；
+     * 卖家视角再批量查一次客户，填充下单人信息。
      */
-    private PageResult<OrderDetail> toPageResult(Page<CustomerOrder> result) {
+    private PageResult<OrderDetail> toPageResult(Page<CustomerOrder> result, boolean withCustomer) {
         List<Long> orderIds = result.getRecords().stream().map(CustomerOrder::getId).toList();
         Map<Long, List<CustomerOrderItem>> itemsByOrder = itemMapper.selectByOrderIds(orderIds).stream()
                 .collect(Collectors.groupingBy(CustomerOrderItem::getOrderId, LinkedHashMap::new,
                         Collectors.toCollection(ArrayList::new)));
+        Map<Long, Customer> customers = withCustomer ? customersOf(result.getRecords()) : Map.of();
         List<OrderDetail> details = result.getRecords().stream()
-                .map(order -> OrderDetail.of(order, itemsByOrder.getOrDefault(order.getId(), List.of())))
+                .map(order -> {
+                    Customer customer = customers.get(order.getCustomerId());
+                    return OrderDetail.of(order, itemsByOrder.getOrDefault(order.getId(), List.of()),
+                            customer == null ? null : customer.getUsername(),
+                            customer == null ? null : customer.getPhone());
+                })
                 .toList();
         return new PageResult<>(details, result.getTotal());
+    }
+
+    /**
+     * 这一页订单的下单客户，一次查完
+     */
+    private Map<Long, Customer> customersOf(List<CustomerOrder> orders) {
+        List<Long> customerIds = orders.stream().map(CustomerOrder::getCustomerId).distinct().toList();
+        if (customerIds.isEmpty()) {
+            return Map.of();
+        }
+        return customerMapper.selectBatchIds(customerIds).stream()
+                .collect(Collectors.toMap(Customer::getId, Function.identity()));
     }
 
     /**
