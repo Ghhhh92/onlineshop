@@ -105,5 +105,5 @@
 ## 9. 待办清单与缺陷登记
 
 1. ~~补订单查询/校验用例~~ ✅ 已补：`OrderQueryTest`（9 个用例）。
-2. **🔴 契约不一致（待高佳豪确认）**：接口契约 §六 写「卖家订单详情含客户信息与明细」，但 `OrderDetail` DTO 只有 `id/orderNo/status/totalAmount/createTime/items`，**没有 customerId / username / phone**。卖家后台无法从订单详情得知下单客户是谁。需二选一：补代码（OrderDetail 带客户信息）或改契约，避免验收被挑。
-3. **前端 E2E（被林炜博前端阻塞）**：仓库当前无 order/cart/favorite 的页面、路由与 api 封装，前端落地后补 `frontend/tests/challenge-b-e2e.cjs`（下单 → 商家推进 → 取消边界、收藏、加购 → 多选下单/转收藏）。
+2. ~~🔴 契约不一致：卖家订单详情缺客户信息~~ ✅ **已修复**：高佳豪提交 `d2ef97f feat(order): 卖家订单返回下单客户信息`，`OrderDetail` 现带 `customerUsername/customerPhone`（客户侧为 null），并新增 `OrderLifecycleTest.sellerOrderCarriesCustomerInfo` 覆盖。
+3. ~~前端 E2E 被阻塞~~ ✅ **已补**：前端挑战 B 落地（`feat/frontend-challenge-b`，收藏/购物车/我的订单/卖家订单管理页 + 路由 + api），新增 `frontend/tests/challenge-b-e2e.cjs`（下单 → 商家五状态推进 → 客户取消 → 收藏 → 加购 → 多选下单 → 转收藏）。
