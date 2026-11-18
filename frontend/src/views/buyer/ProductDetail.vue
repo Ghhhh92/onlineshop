@@ -19,21 +19,39 @@
           </div>
 
           <div class="info">
-            <el-tag :type="isFrozen ? 'warning' : 'success'" effect="light" round>
-              {{ product.statusText }}
+            <el-tag :type="available ? 'success' : 'info'" effect="light" round>
+              {{ product.statusText || product.status }}
             </el-tag>
             <h2>{{ product.name }}</h2>
             <p class="price">￥{{ product.price }}</p>
-            <p v-if="product.status === 'ON_SALE'" class="stock">库存 {{ product.stock }} 件</p>
-            <el-button
-              type="primary"
-              size="large"
-              class="buy-btn"
-              :disabled="isFrozen"
-              @click="goBuy"
-            >
-              {{ isFrozen ? '商品交易中' : '我要购买' }}
-            </el-button>
+            <p v-if="available" class="stock">库存 {{ product.stock }} 件</p>
+            <p v-else class="stock">该商品当前不可购买</p>
+
+            <div class="buyer-actions">
+              <div class="quantity-row">
+                <span class="quantity-label">数量</span>
+                <el-input-number v-model="quantity" :min="1" :max="999" :disabled="!available" />
+              </div>
+              <el-button
+                type="primary"
+                size="large"
+                class="action-btn"
+                :disabled="!available"
+                :loading="cartLoading"
+                @click="handleAddCart"
+              >
+                加入购物车
+              </el-button>
+              <el-button
+                size="large"
+                class="action-btn"
+                :disabled="!available"
+                :loading="favoriteLoading"
+                @click="handleFavorite"
+              >
+                收藏
+              </el-button>
+            </div>
           </div>
         </div>
 
@@ -52,14 +70,23 @@ import RichDescription from '@/components/RichDescription.vue'
 
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import BuyerLayout from '@/components/BuyerLayout.vue'
 import { getProductDetail } from '@/api/product'
+import { addCart, addFavorite } from '@/api/customer'
+import { useCustomerStore } from '@/stores/customer'
+import { ensureCustomerLogin } from '@/utils/ensureCustomer'
 
 const route = useRoute()
 const router = useRouter()
+const customer = useCustomerStore()
 const product = ref(null)
 const loading = ref(false)
-const isFrozen = computed(() => product.value?.status === 'FROZEN')
+const quantity = ref(1)
+const cartLoading = ref(false)
+const favoriteLoading = ref(false)
+
+const available = computed(() => product.value?.status === 'ON_SALE' && Number(product.value?.stock || 0) > 0)
 
 onMounted(async () => {
   loading.value = true
@@ -72,9 +99,32 @@ onMounted(async () => {
   }
 })
 
-function goBuy() {
-  if (isFrozen.value) return
-  router.push({ path: '/buy', query: { productId: product.value.id } })
+async function handleAddCart() {
+  if (!available.value) return
+  if (!(await ensureCustomerLogin(customer, router))) return
+  cartLoading.value = true
+  try {
+    await addCart(product.value.id, quantity.value)
+    ElMessage.success('已加入购物车')
+  } catch {
+    // 错误提示由 http 拦截器统一处理
+  } finally {
+    cartLoading.value = false
+  }
+}
+
+async function handleFavorite() {
+  if (!available.value) return
+  if (!(await ensureCustomerLogin(customer, router))) return
+  favoriteLoading.value = true
+  try {
+    await addFavorite(product.value.id)
+    ElMessage.success('已收藏')
+  } catch {
+    // 错误提示由 http 拦截器统一处理
+  } finally {
+    favoriteLoading.value = false
+  }
 }
 </script>
 
@@ -140,7 +190,24 @@ function goBuy() {
   color: #71817c;
 }
 
-.buy-btn {
+.buyer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quantity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quantity-label {
+  color: #61736e;
+  font-weight: 600;
+}
+
+.action-btn {
   width: 100%;
 }
 

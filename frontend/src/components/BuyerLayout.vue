@@ -7,8 +7,11 @@
       </router-link>
       <nav class="buyer-nav" aria-label="买家导航">
         <router-link to="/">首页</router-link>
-        <router-link to="/query">口令查询</router-link>
-        <router-link v-if="customer.loggedIn" to="/customer/orders">我的订单</router-link>
+        <template v-if="customer.loggedIn">
+          <router-link to="/customer/favorites">收藏</router-link>
+          <router-link to="/customer/cart">购物车</router-link>
+          <router-link to="/customer/orders">我的订单</router-link>
+        </template>
       </nav>
       <div class="buyer-account">
         <template v-if="customer.loggedIn">
@@ -33,6 +36,7 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useCustomerStore } from '@/stores/customer'
@@ -51,6 +55,14 @@ async function signOut() {
   ElMessage.success('已退出登录')
   router.push('/')
 }
+
+onMounted(async () => {
+  try {
+    await customer.restore()
+  } catch {
+    // 导航栏登录态仅作展示，恢复失败不阻断浏览
+  }
+})
 </script>
 
 <style scoped>

@@ -3,7 +3,7 @@
     <div class="auth-container">
       <el-card class="auth-card">
         <h1>客户注册</h1>
-        <p class="buyer-muted">注册后可用账号认领购买意向，并查看历史下单记录。</p>
+        <p class="buyer-muted">注册后即可收藏商品、加入购物车并下单，查看自己的订单记录。</p>
         <el-form
           ref="formRef"
           :model="form"
@@ -41,13 +41,14 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BuyerLayout from '@/components/BuyerLayout.vue'
 import { register } from '@/api/customer'
 import { useCustomerStore } from '@/stores/customer'
 
 const router = useRouter()
+const route = useRoute()
 const store = useCustomerStore()
 const formRef = ref(null)
 const loading = ref(false)
@@ -89,7 +90,7 @@ async function submit() {
     })
     store.setLogin(customer)
     ElMessage.success('注册成功，已自动登录')
-    router.push('/customer/orders')
+    router.push(route.query.redirect || '/customer/orders')
   } catch {
     // 错误提示由 http 拦截器统一处理
   } finally {

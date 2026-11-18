@@ -3,7 +3,7 @@ import { useSellerStore } from '@/stores/seller'
 import { useCustomerStore } from '@/stores/customer'
 
 const routes = [
-  ...['Products', 'Categories', 'Customers'].map(view => ({ path: `/seller/${view.toLowerCase()}`, name: `Seller${view}`, component: () => import(`../views/seller/${view}.vue`), meta: { requiresAuth: true } })),
+  ...['Products', 'Categories', 'Customers', 'Orders'].map(view => ({ path: `/seller/${view.toLowerCase()}`, name: `Seller${view}`, component: () => import(`../views/seller/${view}.vue`), meta: { requiresAuth: true } })),
   // 买家端
   { path: '/', name: 'Home', component: () => import('@/views/buyer/Home.vue') },
   { path: '/product/:id', name: 'ProductDetail', component: () => import('@/views/buyer/ProductDetail.vue') },
@@ -18,6 +18,18 @@ const routes = [
     path: '/customer/orders',
     name: 'CustomerOrders',
     component: () => import('@/views/customer/Orders.vue'),
+    meta: { requiresCustomer: true },
+  },
+  {
+    path: '/customer/favorites',
+    name: 'CustomerFavorites',
+    component: () => import('@/views/customer/Favorites.vue'),
+    meta: { requiresCustomer: true },
+  },
+  {
+    path: '/customer/cart',
+    name: 'CustomerCart',
+    component: () => import('@/views/customer/Cart.vue'),
     meta: { requiresCustomer: true },
   },
 
