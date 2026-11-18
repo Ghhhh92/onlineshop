@@ -4,7 +4,7 @@
 - 日期：2026-11-18
 - 后端执行方式：`cd backend && mvn clean test`（自动化，H2 内存库 + Flyway V1～V6 建表，无需 MySQL）
 - 后端汇总：**Tests run: 262, Failures: 0, Errors: 0, Skipped: 0**（BUILD SUCCESS）
-- 前端联调 E2E：`frontend/tests/challenge-b-e2e.cjs`（真实后端 H2、无 mock）**PASS**，覆盖 14231～14237
+- 前端联调 E2E：`frontend/tests/challenge-b-e2e.cjs`（真实后端、无 mock）**PASS**，覆盖 14231～14237
 
 ## 一、本轮新增用例（叶文锦）
 
@@ -25,7 +25,12 @@
 
 ## 三、前端联调 E2E（真实后端，无 mock）
 
-- 脚本：`frontend/tests/challenge-b-e2e.cjs`（Playwright + 真实 Spring Boot + H2 + Vite dev server）
+- 脚本：`frontend/tests/challenge-b-e2e.cjs`（Playwright + 真实 Spring Boot + Vite dev server）
+- 运行前提：
+  1. `cd frontend && npm i` 安装依赖；首次运行需 `npx playwright install chromium` 下载浏览器
+  2. 后端与 Vite dev server 已启动，并确认前端代理 `/api` 指向后端
+  3. **数据库为空库**：脚本会新建商品与客户，并断言订单列表只有本次产生的订单，库里有历史订单时会断言失败
+- 执行命令：`npm run test:e2e`（或 `node tests/challenge-b-e2e.cjs`）
 - 结果：**PASS**（`publish -> favorite -> cart -> checkout -> 5-state order flow -> customer cancel -> cart-to-favorite; no page errors`）
 - 覆盖链路：
 
